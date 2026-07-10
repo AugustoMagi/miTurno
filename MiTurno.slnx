@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MiTurno.Application/MiTurno.Application.csproj" />
+    <Project Path="src/MiTurno.Domain/MiTurno.Domain.csproj" />
+    <Project Path="src/MiTurno.Infrastructure/MiTurno.Infrastructure.csproj" />
+    <Project Path="src/MiTurno.Presentation/MiTurno.Presentation.csproj" />
+  </Folder>
+</Solution>
