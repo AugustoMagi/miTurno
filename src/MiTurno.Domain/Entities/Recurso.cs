@@ -58,6 +58,15 @@ public class Recurso : BaseEntity
         _horariosDisponibles.Add(horario);
     }
 
+    public void EliminarHorarioDisponible(Guid horarioId)
+    {
+        var horario = _horariosDisponibles.FirstOrDefault(h => h.Id == horarioId);
+        if (horario is null)
+            throw new DomainException("El horario no existe para este recurso.");
+
+        _horariosDisponibles.Remove(horario);
+    }
+
     public void AgregarBloqueoFecha(BloqueoFecha bloqueo) => _bloqueosFecha.Add(bloqueo);
 
     public void ActualizarDatos(string nombre, string tipo, TimeSpan duracionTurno, decimal precio)

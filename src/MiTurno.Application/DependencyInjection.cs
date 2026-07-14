@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Features.Auth;
 using MiTurno.Application.Features.Recursos;
+using MiTurno.Application.Features.Recursos.Horarios;
 
 namespace MiTurno.Application;
 
@@ -19,6 +20,10 @@ public static class DependencyInjection
         services.AddScoped<ObtenerRecursoUseCase>();
         services.AddScoped<ActualizarRecursoUseCase>();
         services.AddScoped<CambiarEstadoRecursoUseCase>();
+
+        services.AddScoped<AgregarHorarioDisponibleUseCase>();
+        services.AddScoped<ListarHorariosDisponiblesUseCase>();
+        services.AddScoped<EliminarHorarioDisponibleUseCase>();
 
         return services;
     }
