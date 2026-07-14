@@ -60,11 +60,20 @@ public class Recurso : BaseEntity
 
     public void AgregarBloqueoFecha(BloqueoFecha bloqueo) => _bloqueosFecha.Add(bloqueo);
 
-    public void ActualizarPrecio(decimal precio)
+    public void ActualizarDatos(string nombre, string tipo, TimeSpan duracionTurno, decimal precio)
     {
+        if (string.IsNullOrWhiteSpace(nombre))
+            throw new DomainException("El nombre del recurso es obligatorio.");
+        if (string.IsNullOrWhiteSpace(tipo))
+            throw new DomainException("El tipo del recurso es obligatorio.");
+        if (duracionTurno <= TimeSpan.Zero)
+            throw new DomainException("La duración del turno debe ser mayor a cero.");
         if (precio < 0)
             throw new DomainException("El precio no puede ser negativo.");
 
+        Nombre = nombre;
+        Tipo = tipo;
+        DuracionTurno = duracionTurno;
         Precio = precio;
         MarcarActualizado();
     }

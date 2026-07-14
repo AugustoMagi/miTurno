@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Features.Auth;
+using MiTurno.Application.Features.Recursos;
 
 namespace MiTurno.Application;
 
@@ -12,6 +13,12 @@ public static class DependencyInjection
 
         services.AddScoped<RegistrarNegocioUseCase>();
         services.AddScoped<LoginUseCase>();
+
+        services.AddScoped<CrearRecursoUseCase>();
+        services.AddScoped<ListarRecursosUseCase>();
+        services.AddScoped<ObtenerRecursoUseCase>();
+        services.AddScoped<ActualizarRecursoUseCase>();
+        services.AddScoped<CambiarEstadoRecursoUseCase>();
 
         return services;
     }
