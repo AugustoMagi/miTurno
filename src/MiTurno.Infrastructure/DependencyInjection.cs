@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Common.Interfaces;
+using MiTurno.Infrastructure.Auth;
 using MiTurno.Infrastructure.Persistence;
 using MiTurno.Infrastructure.Persistence.Repositories;
 
@@ -27,6 +28,10 @@ public static class DependencyInjection
         services.AddScoped<IRecursoRepository, RecursoRepository>();
         services.AddScoped<IClienteRepository, ClienteRepository>();
         services.AddScoped<IReservaRepository, ReservaRepository>();
+
+        services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
+        services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
         return services;
     }

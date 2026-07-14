@@ -1,11 +1,31 @@
+# Visual Studio
 .vs/
+*.user
+*.suo
+
+# Build
 bin/
 obj/
 
+# Node.js (si usás frontend)
 node_modules/
 
+# Variables de entorno
 .env
 .env.*
 
-*.user
-*.suo
+# Configuración local
+appsettings.Development.json
+
+# Logs
+*.log
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# Archivos temporales
+*.tmp
+*.cache
