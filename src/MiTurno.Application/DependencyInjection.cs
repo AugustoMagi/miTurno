@@ -4,6 +4,7 @@ using MiTurno.Application.Features.Auth;
 using MiTurno.Application.Features.Recursos;
 using MiTurno.Application.Features.Recursos.Horarios;
 using MiTurno.Application.Features.Public;
+using MiTurno.Application.Features.Reservas;
 
 namespace MiTurno.Application;
 
@@ -29,6 +30,9 @@ public static class DependencyInjection
         services.AddScoped<ObtenerNegocioPublicoUseCase>();
         services.AddScoped<ListarTurnosDisponiblesUseCase>();
         services.AddScoped<CrearReservaUseCase>();
+
+        services.AddScoped<ListarReservasUseCase>();
+        services.AddScoped<CancelarReservaUseCase>();
 
         return services;
     }

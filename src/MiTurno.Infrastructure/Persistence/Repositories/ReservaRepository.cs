@@ -18,4 +18,10 @@ public class ReservaRepository : Repository<Reserva>, IReservaRepository
         await DbSet
             .Where(r => r.RecursoId == recursoId && r.Fecha == fecha)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Reserva>> GetByNegocioIdAsync(Guid negocioId, CancellationToken cancellationToken = default) =>
+        await DbSet
+            .Where(r => Context.Set<Recurso>().Any(rec => rec.Id == r.RecursoId && rec.NegocioId == negocioId))
+            .OrderByDescending(r => r.Fecha).ThenBy(r => r.HoraInicio)
+            .ToListAsync(cancellationToken);
 }
