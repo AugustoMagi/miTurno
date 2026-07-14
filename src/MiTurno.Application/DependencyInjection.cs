@@ -28,6 +28,7 @@ public static class DependencyInjection
 
         services.AddScoped<ObtenerNegocioPublicoUseCase>();
         services.AddScoped<ListarTurnosDisponiblesUseCase>();
+        services.AddScoped<CrearReservaUseCase>();
 
         return services;
     }

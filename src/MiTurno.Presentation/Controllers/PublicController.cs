@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MiTurno.Application.Features.Public;
+using MiTurno.Application.Features.Public.Dtos;
 
 namespace MiTurno.Presentation.Controllers;
 
@@ -10,13 +11,16 @@ public class PublicController : ControllerBase
 {
     private readonly ObtenerNegocioPublicoUseCase _obtenerNegocioPublicoUseCase;
     private readonly ListarTurnosDisponiblesUseCase _listarTurnosDisponiblesUseCase;
+    private readonly CrearReservaUseCase _crearReservaUseCase;
 
     public PublicController(
         ObtenerNegocioPublicoUseCase obtenerNegocioPublicoUseCase,
-        ListarTurnosDisponiblesUseCase listarTurnosDisponiblesUseCase)
+        ListarTurnosDisponiblesUseCase listarTurnosDisponiblesUseCase,
+        CrearReservaUseCase crearReservaUseCase)
     {
         _obtenerNegocioPublicoUseCase = obtenerNegocioPublicoUseCase;
         _listarTurnosDisponiblesUseCase = listarTurnosDisponiblesUseCase;
+        _crearReservaUseCase = crearReservaUseCase;
     }
 
     [HttpGet("{slug}")]
@@ -31,6 +35,14 @@ public class PublicController : ControllerBase
         string slug, Guid recursoId, [FromQuery] DateOnly fecha, CancellationToken cancellationToken)
     {
         var result = await _listarTurnosDisponiblesUseCase.ExecuteAsync(slug, recursoId, fecha, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
+
+    [HttpPost("{slug}/recursos/{recursoId:guid}/reservas")]
+    public async Task<IActionResult> CrearReserva(
+        string slug, Guid recursoId, CrearReservaRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _crearReservaUseCase.ExecuteAsync(slug, recursoId, request, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
     }
 }
