@@ -12,15 +12,21 @@ public class PublicController : ControllerBase
     private readonly ObtenerNegocioPublicoUseCase _obtenerNegocioPublicoUseCase;
     private readonly ListarTurnosDisponiblesUseCase _listarTurnosDisponiblesUseCase;
     private readonly CrearReservaUseCase _crearReservaUseCase;
+    private readonly ConfirmarPagoUseCase _confirmarPagoUseCase;
+    private readonly RechazarPagoUseCase _rechazarPagoUseCase;
 
     public PublicController(
         ObtenerNegocioPublicoUseCase obtenerNegocioPublicoUseCase,
         ListarTurnosDisponiblesUseCase listarTurnosDisponiblesUseCase,
-        CrearReservaUseCase crearReservaUseCase)
+        CrearReservaUseCase crearReservaUseCase,
+        ConfirmarPagoUseCase confirmarPagoUseCase,
+        RechazarPagoUseCase rechazarPagoUseCase)
     {
         _obtenerNegocioPublicoUseCase = obtenerNegocioPublicoUseCase;
         _listarTurnosDisponiblesUseCase = listarTurnosDisponiblesUseCase;
         _crearReservaUseCase = crearReservaUseCase;
+        _confirmarPagoUseCase = confirmarPagoUseCase;
+        _rechazarPagoUseCase = rechazarPagoUseCase;
     }
 
     [HttpGet("{slug}")]
@@ -43,6 +49,20 @@ public class PublicController : ControllerBase
         string slug, Guid recursoId, CrearReservaRequest request, CancellationToken cancellationToken)
     {
         var result = await _crearReservaUseCase.ExecuteAsync(slug, recursoId, request, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
+
+    [HttpPatch("{slug}/reservas/{reservaId:guid}/pago/confirmar")]
+    public async Task<IActionResult> ConfirmarPago(string slug, Guid reservaId, CancellationToken cancellationToken)
+    {
+        var result = await _confirmarPagoUseCase.ExecuteAsync(slug, reservaId, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
+
+    [HttpPatch("{slug}/reservas/{reservaId:guid}/pago/rechazar")]
+    public async Task<IActionResult> RechazarPago(string slug, Guid reservaId, CancellationToken cancellationToken)
+    {
+        var result = await _rechazarPagoUseCase.ExecuteAsync(slug, reservaId, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
     }
 }
