@@ -15,17 +15,23 @@ public class ConfirmarPagoUseCase
     private readonly INegocioRepository _negocioRepository;
     private readonly IRecursoRepository _recursoRepository;
     private readonly IReservaRepository _reservaRepository;
+    private readonly IClienteRepository _clienteRepository;
+    private readonly IEmailNotificador _emailNotificador;
     private readonly IUnitOfWork _unitOfWork;
 
     public ConfirmarPagoUseCase(
         INegocioRepository negocioRepository,
         IRecursoRepository recursoRepository,
         IReservaRepository reservaRepository,
+        IClienteRepository clienteRepository,
+        IEmailNotificador emailNotificador,
         IUnitOfWork unitOfWork)
     {
         _negocioRepository = negocioRepository;
         _recursoRepository = recursoRepository;
         _reservaRepository = reservaRepository;
+        _clienteRepository = clienteRepository;
+        _emailNotificador = emailNotificador;
         _unitOfWork = unitOfWork;
     }
 
@@ -54,6 +60,13 @@ public class ConfirmarPagoUseCase
 
             _reservaRepository.Update(reserva);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            var cliente = await _clienteRepository.GetByIdAsync(reserva.ClienteId, cancellationToken);
+            await _emailNotificador.NotificarReservaConfirmadaAsync(
+                new NotificacionReserva(
+                    cliente!.Email, cliente.Nombre, negocio.Nombre, recurso.Nombre,
+                    reserva.Fecha, reserva.HoraInicio, reserva.HoraFin),
+                cancellationToken);
 
             return Result.Success(new ReservaResponse(
                 reserva.Id, reserva.RecursoId, reserva.ClienteId, reserva.Fecha,

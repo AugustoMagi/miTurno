@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Infrastructure.Auth;
+using MiTurno.Infrastructure.Notifications;
 using MiTurno.Infrastructure.Persistence;
 using MiTurno.Infrastructure.Persistence.Repositories;
 
@@ -32,6 +33,9 @@ public static class DependencyInjection
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+
+        services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
+        services.AddScoped<IEmailNotificador, SmtpEmailNotificador>();
 
         return services;
     }
