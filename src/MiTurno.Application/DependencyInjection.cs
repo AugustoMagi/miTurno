@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Features.Auth;
+using MiTurno.Application.Features.Clientes;
 using MiTurno.Application.Features.Recursos;
 using MiTurno.Application.Features.Recursos.Bloqueos;
 using MiTurno.Application.Features.Recursos.Horarios;
@@ -40,6 +41,9 @@ public static class DependencyInjection
 
         services.AddScoped<ListarReservasUseCase>();
         services.AddScoped<CancelarReservaUseCase>();
+
+        services.AddScoped<ListarClientesUseCase>();
+        services.AddScoped<ObtenerHistorialClienteUseCase>();
 
         return services;
     }
