@@ -15,6 +15,9 @@ public class BloqueoFechaConfiguration : IEntityTypeConfiguration<BloqueoFecha>
 
         builder.Property(b => b.Motivo).HasMaxLength(300);
 
+        // Un mismo recurso no puede tener dos bloqueos para la misma fecha.
+        builder.HasIndex(b => new { b.RecursoId, b.Fecha }).IsUnique();
+
         builder.HasOne<Recurso>()
             .WithMany(r => r.BloqueosFecha)
             .HasForeignKey(b => b.RecursoId)

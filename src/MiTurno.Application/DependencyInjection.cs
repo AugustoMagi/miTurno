@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Features.Auth;
 using MiTurno.Application.Features.Recursos;
+using MiTurno.Application.Features.Recursos.Bloqueos;
 using MiTurno.Application.Features.Recursos.Horarios;
 using MiTurno.Application.Features.Public;
 using MiTurno.Application.Features.Reservas;
@@ -26,6 +27,10 @@ public static class DependencyInjection
         services.AddScoped<AgregarHorarioDisponibleUseCase>();
         services.AddScoped<ListarHorariosDisponiblesUseCase>();
         services.AddScoped<EliminarHorarioDisponibleUseCase>();
+
+        services.AddScoped<AgregarBloqueoFechaUseCase>();
+        services.AddScoped<ListarBloqueosFechaUseCase>();
+        services.AddScoped<EliminarBloqueoFechaUseCase>();
 
         services.AddScoped<ObtenerNegocioPublicoUseCase>();
         services.AddScoped<ListarTurnosDisponiblesUseCase>();

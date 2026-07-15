@@ -67,7 +67,22 @@ public class Recurso : BaseEntity
         _horariosDisponibles.Remove(horario);
     }
 
-    public void AgregarBloqueoFecha(BloqueoFecha bloqueo) => _bloqueosFecha.Add(bloqueo);
+    public void AgregarBloqueoFecha(BloqueoFecha bloqueo)
+    {
+        if (_bloqueosFecha.Any(b => b.Fecha == bloqueo.Fecha))
+            throw new DomainException("Ya existe un bloqueo para esa fecha.");
+
+        _bloqueosFecha.Add(bloqueo);
+    }
+
+    public void EliminarBloqueoFecha(Guid bloqueoId)
+    {
+        var bloqueo = _bloqueosFecha.FirstOrDefault(b => b.Id == bloqueoId);
+        if (bloqueo is null)
+            throw new DomainException("El bloqueo no existe para este recurso.");
+
+        _bloqueosFecha.Remove(bloqueo);
+    }
 
     public void ActualizarDatos(string nombre, string tipo, TimeSpan duracionTurno, decimal precio)
     {
