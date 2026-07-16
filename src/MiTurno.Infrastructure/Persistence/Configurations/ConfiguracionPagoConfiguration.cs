@@ -15,8 +15,7 @@ public class ConfiguracionPagoConfiguration : IEntityTypeConfiguration<Configura
 
         builder.Property(c => c.Proveedor).HasConversion<int>();
 
-        // Puede ser un blob de OAuth (tokens/refresh token en JSON); sin límite de longitud fijo.
-        builder.Property(c => c.CredencialesOAuth).IsRequired();
+        builder.Property(c => c.Alias).IsRequired().HasMaxLength(200);
 
         builder.HasOne<Negocio>()
             .WithMany()

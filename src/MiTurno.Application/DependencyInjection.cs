@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Features.Auth;
 using MiTurno.Application.Features.Clientes;
+using MiTurno.Application.Features.ConfiguracionesPago;
 using MiTurno.Application.Features.Recursos;
 using MiTurno.Application.Features.Recursos.Bloqueos;
 using MiTurno.Application.Features.Recursos.Horarios;
@@ -44,6 +45,10 @@ public static class DependencyInjection
 
         services.AddScoped<ListarClientesUseCase>();
         services.AddScoped<ObtenerHistorialClienteUseCase>();
+
+        services.AddScoped<ConectarConfiguracionPagoUseCase>();
+        services.AddScoped<ObtenerConfiguracionPagoUseCase>();
+        services.AddScoped<DesconectarConfiguracionPagoUseCase>();
 
         return services;
     }
