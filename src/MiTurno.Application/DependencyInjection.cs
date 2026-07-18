@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Features.Auth;
 using MiTurno.Application.Features.Clientes;
 using MiTurno.Application.Features.ConfiguracionesPago;
+using MiTurno.Application.Features.Estadisticas;
 using MiTurno.Application.Features.Recursos;
 using MiTurno.Application.Features.Recursos.Bloqueos;
 using MiTurno.Application.Features.Recursos.Horarios;
@@ -50,6 +51,8 @@ public static class DependencyInjection
         services.AddScoped<ConectarConfiguracionPagoUseCase>();
         services.AddScoped<ObtenerConfiguracionPagoUseCase>();
         services.AddScoped<DesconectarConfiguracionPagoUseCase>();
+
+        services.AddScoped<ObtenerEstadisticasOcupacionUseCase>();
 
         return services;
     }
