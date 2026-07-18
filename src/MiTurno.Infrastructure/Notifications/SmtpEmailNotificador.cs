@@ -54,6 +54,15 @@ public class SmtpEmailNotificador : IEmailNotificador
             $"por ${n.PrecioTotal}.",
             cancellationToken);
 
+    public Task NotificarReservaCanceladaPorClienteAsync(NotificacionNuevaReserva n, CancellationToken cancellationToken = default) =>
+        EnviarAsync(
+            n.NegocioEmail,
+            $"{n.ClienteNombre} canceló su reserva en {n.NegocioNombre}",
+            $"Hola,\n\n" +
+            $"{n.ClienteNombre} canceló su reserva en {n.RecursoNombre} para el {FormatearFecha(n.Fecha, n.HoraInicio, n.HoraFin)}. " +
+            "El horario volvió a estar disponible.",
+            cancellationToken);
+
     private static string FormatearFecha(NotificacionReserva n) =>
         FormatearFecha(n.Fecha, n.HoraInicio, n.HoraFin);
 

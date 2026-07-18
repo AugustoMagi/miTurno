@@ -14,19 +14,22 @@ public class PublicController : ControllerBase
     private readonly CrearReservaUseCase _crearReservaUseCase;
     private readonly ConfirmarPagoUseCase _confirmarPagoUseCase;
     private readonly RechazarPagoUseCase _rechazarPagoUseCase;
+    private readonly CancelarReservaClienteUseCase _cancelarReservaClienteUseCase;
 
     public PublicController(
         ObtenerNegocioPublicoUseCase obtenerNegocioPublicoUseCase,
         ListarTurnosDisponiblesUseCase listarTurnosDisponiblesUseCase,
         CrearReservaUseCase crearReservaUseCase,
         ConfirmarPagoUseCase confirmarPagoUseCase,
-        RechazarPagoUseCase rechazarPagoUseCase)
+        RechazarPagoUseCase rechazarPagoUseCase,
+        CancelarReservaClienteUseCase cancelarReservaClienteUseCase)
     {
         _obtenerNegocioPublicoUseCase = obtenerNegocioPublicoUseCase;
         _listarTurnosDisponiblesUseCase = listarTurnosDisponiblesUseCase;
         _crearReservaUseCase = crearReservaUseCase;
         _confirmarPagoUseCase = confirmarPagoUseCase;
         _rechazarPagoUseCase = rechazarPagoUseCase;
+        _cancelarReservaClienteUseCase = cancelarReservaClienteUseCase;
     }
 
     [HttpGet("{slug}")]
@@ -63,6 +66,13 @@ public class PublicController : ControllerBase
     public async Task<IActionResult> RechazarPago(string slug, Guid reservaId, CancellationToken cancellationToken)
     {
         var result = await _rechazarPagoUseCase.ExecuteAsync(slug, reservaId, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
+
+    [HttpPatch("{slug}/reservas/{reservaId:guid}/cancelar")]
+    public async Task<IActionResult> CancelarReserva(string slug, Guid reservaId, CancellationToken cancellationToken)
+    {
+        var result = await _cancelarReservaClienteUseCase.ExecuteAsync(slug, reservaId, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
     }
 }
