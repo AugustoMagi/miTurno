@@ -10,4 +10,5 @@ public record ReservaResponse(
     TimeSpan HoraInicio,
     TimeSpan HoraFin,
     decimal PrecioTotal,
-    EstadoReserva Estado);
+    EstadoReserva Estado,
+    string? LinkPago = null);

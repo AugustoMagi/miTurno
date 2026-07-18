@@ -60,4 +60,30 @@ public class ConectarConfiguracionPagoUseCaseTests
         result.IsFailure.Should().BeTrue();
         await _configuracionPagoRepository.DidNotReceive().GetActivaByNegocioIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ConAccessToken_LoGuardaYNoLoExponeEnLaRespuesta()
+    {
+        var negocioId = Guid.NewGuid();
+        _configuracionPagoRepository.GetActivaByNegocioIdAsync(negocioId).Returns((Domain.Entities.ConfiguracionPago?)null);
+
+        var result = await _useCase.ExecuteAsync(
+            negocioId, new ConectarConfiguracionPagoRequest(ProveedorPago.MercadoPago, "alias.mp", "TEST-ACCESS-TOKEN"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.TieneAccessToken.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SinAccessToken_TieneAccessTokenEsFalse()
+    {
+        var negocioId = Guid.NewGuid();
+        _configuracionPagoRepository.GetActivaByNegocioIdAsync(negocioId).Returns((Domain.Entities.ConfiguracionPago?)null);
+
+        var result = await _useCase.ExecuteAsync(
+            negocioId, new ConectarConfiguracionPagoRequest(ProveedorPago.MercadoPago, "alias.mp"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.TieneAccessToken.Should().BeFalse();
+    }
 }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Infrastructure.Auth;
 using MiTurno.Infrastructure.Notifications;
+using MiTurno.Infrastructure.Pagos;
 using MiTurno.Infrastructure.Persistence;
 using MiTurno.Infrastructure.Persistence.Repositories;
 
@@ -36,6 +37,10 @@ public static class DependencyInjection
 
         services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
         services.AddScoped<IEmailNotificador, SmtpEmailNotificador>();
+
+        services.AddHttpClient<IPagoGateway, MercadoPagoGateway>();
+
+        services.AddDataProtection();
 
         return services;
     }

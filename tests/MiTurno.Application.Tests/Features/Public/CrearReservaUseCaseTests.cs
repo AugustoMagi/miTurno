@@ -1,4 +1,5 @@
 using MiTurno.Application.Common.Interfaces;
+using MiTurno.Application.Common.Models;
 using MiTurno.Application.Features.Public;
 using MiTurno.Application.Features.Public.Dtos;
 using MiTurno.Domain.Entities;
@@ -8,10 +9,14 @@ namespace MiTurno.Application.Tests.Features.Public;
 
 public class CrearReservaUseCaseTests
 {
+    private const string WebhookBaseUrl = "https://miturno.test";
+
     private readonly INegocioRepository _negocioRepository = Substitute.For<INegocioRepository>();
     private readonly IRecursoRepository _recursoRepository = Substitute.For<IRecursoRepository>();
     private readonly IReservaRepository _reservaRepository = Substitute.For<IReservaRepository>();
     private readonly IClienteRepository _clienteRepository = Substitute.For<IClienteRepository>();
+    private readonly IConfiguracionPagoRepository _configuracionPagoRepository = Substitute.For<IConfiguracionPagoRepository>();
+    private readonly IPagoGateway _pagoGateway = Substitute.For<IPagoGateway>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     private readonly CrearReservaUseCase _useCase;
@@ -22,7 +27,7 @@ public class CrearReservaUseCaseTests
     {
         _useCase = new CrearReservaUseCase(
             new CrearReservaValidator(), _negocioRepository, _recursoRepository, _reservaRepository,
-            _clienteRepository, _unitOfWork);
+            _clienteRepository, _configuracionPagoRepository, _pagoGateway, _unitOfWork);
     }
 
     private (Negocio negocio, Recurso recurso) EscenarioValido()
@@ -48,7 +53,7 @@ public class CrearReservaUseCaseTests
         var (negocio, recurso) = EscenarioValido();
         _clienteRepository.GetByEmailAsync("juan@test.com").Returns((Cliente?)null);
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido());
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.HoraInicio.Should().Be(TimeSpan.FromHours(18));
@@ -66,7 +71,7 @@ public class CrearReservaUseCaseTests
         var clienteExistente = Cliente.Crear("Juan P.", "juan@test.com", "000");
         _clienteRepository.GetByEmailAsync("juan@test.com").Returns(clienteExistente);
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido());
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
 
         result.IsSuccess.Should().BeTrue();
         clienteExistente.Nombre.Should().Be("Juan Perez");
@@ -80,7 +85,7 @@ public class CrearReservaUseCaseTests
     {
         var request = RequestValido() with { Fecha = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1) };
 
-        var result = await _useCase.ExecuteAsync("cancha-norte", Guid.NewGuid(), request);
+        var result = await _useCase.ExecuteAsync("cancha-norte", Guid.NewGuid(), request, WebhookBaseUrl);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("No se pueden reservar turnos en fechas pasadas.");
@@ -94,7 +99,7 @@ public class CrearReservaUseCaseTests
         negocio.Desactivar();
         _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, Guid.NewGuid(), RequestValido());
+        var result = await _useCase.ExecuteAsync(negocio.Slug, Guid.NewGuid(), RequestValido(), WebhookBaseUrl);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Negocio no encontrado.");
@@ -106,7 +111,7 @@ public class CrearReservaUseCaseTests
         var (negocio, recurso) = EscenarioValido();
         recurso.Desactivar();
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido());
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Recurso no encontrado.");
@@ -118,7 +123,7 @@ public class CrearReservaUseCaseTests
         var (negocio, recurso) = EscenarioValido();
         recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(recurso.Id, FechaFutura, "Feriado"));
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido());
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("El recurso no tiene disponibilidad ese día.");
@@ -130,7 +135,7 @@ public class CrearReservaUseCaseTests
         var (negocio, recurso) = EscenarioValido();
         var request = RequestValido() with { HoraInicio = TimeSpan.FromHours(23) };
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, request);
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, request, WebhookBaseUrl);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("El horario seleccionado no está disponible.");
@@ -144,7 +149,7 @@ public class CrearReservaUseCaseTests
             recurso.Id, Guid.NewGuid(), FechaFutura, TimeSpan.FromHours(18), TimeSpan.FromHours(19), 5000m);
         _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, FechaFutura).Returns([reservaExistente]);
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido());
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("El turno seleccionado ya fue reservado.");
@@ -160,7 +165,7 @@ public class CrearReservaUseCaseTests
         _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, FechaFutura).Returns([reservaCancelada]);
         _clienteRepository.GetByEmailAsync("juan@test.com").Returns((Cliente?)null);
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido());
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
 
         result.IsSuccess.Should().BeTrue();
     }
@@ -170,9 +175,63 @@ public class CrearReservaUseCaseTests
     {
         var request = RequestValido() with { ClienteEmail = "no-es-un-email" };
 
-        var result = await _useCase.ExecuteAsync("cancha-norte", Guid.NewGuid(), request);
+        var result = await _useCase.ExecuteAsync("cancha-norte", Guid.NewGuid(), request, WebhookBaseUrl);
 
         result.IsFailure.Should().BeTrue();
         await _negocioRepository.DidNotReceive().GetBySlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SinMercadoPagoConectado_NoLlamaAlGatewayYLinkPagoEsNulo()
+    {
+        var (negocio, recurso) = EscenarioValido();
+        _clienteRepository.GetByEmailAsync("juan@test.com").Returns((Cliente?)null);
+        _configuracionPagoRepository.GetActivaByNegocioIdAsync(negocio.Id).Returns((ConfiguracionPago?)null);
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.LinkPago.Should().BeNull();
+        await _pagoGateway.DidNotReceive().CrearPreferenciaAsync(Arg.Any<CrearPreferenciaPagoRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConMercadoPagoConectadoYAccessToken_CreaLaPreferenciaYDevuelveElLinkPago()
+    {
+        var (negocio, recurso) = EscenarioValido();
+        _clienteRepository.GetByEmailAsync("juan@test.com").Returns((Cliente?)null);
+        var configuracionPago = ConfiguracionPago.Conectar(negocio.Id, ProveedorPago.MercadoPago, "alias.mp", "TEST-ACCESS-TOKEN");
+        _configuracionPagoRepository.GetActivaByNegocioIdAsync(negocio.Id).Returns(configuracionPago);
+        _pagoGateway.CrearPreferenciaAsync(Arg.Any<CrearPreferenciaPagoRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new PreferenciaPagoResult("pref-1", "https://mp.test/pagar/pref-1")));
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.LinkPago.Should().Be("https://mp.test/pagar/pref-1");
+        await _pagoGateway.Received(1).CrearPreferenciaAsync(
+            Arg.Is<CrearPreferenciaPagoRequest>(r =>
+                r!.AccessToken == "TEST-ACCESS-TOKEN" &&
+                r.NotificationUrl.StartsWith(WebhookBaseUrl) &&
+                r.NotificationUrl.Contains($"{negocio.Slug}/reservas/") &&
+                r.NotificationUrl.EndsWith("/pago/webhook/mercadopago")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConGatewayQueFalla_LaReservaSeCreaIgualYLinkPagoEsNulo()
+    {
+        var (negocio, recurso) = EscenarioValido();
+        _clienteRepository.GetByEmailAsync("juan@test.com").Returns((Cliente?)null);
+        var configuracionPago = ConfiguracionPago.Conectar(negocio.Id, ProveedorPago.MercadoPago, "alias.mp", "TEST-ACCESS-TOKEN");
+        _configuracionPagoRepository.GetActivaByNegocioIdAsync(negocio.Id).Returns(configuracionPago);
+        _pagoGateway.CrearPreferenciaAsync(Arg.Any<CrearPreferenciaPagoRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<PreferenciaPagoResult>("Mercado Pago no respondió."));
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.LinkPago.Should().BeNull();
+        await _reservaRepository.Received(1).AddAsync(Arg.Any<Reserva>(), Arg.Any<CancellationToken>());
     }
 }

@@ -21,6 +21,8 @@ public class CrearReservaUseCase
     private readonly IRecursoRepository _recursoRepository;
     private readonly IReservaRepository _reservaRepository;
     private readonly IClienteRepository _clienteRepository;
+    private readonly IConfiguracionPagoRepository _configuracionPagoRepository;
+    private readonly IPagoGateway _pagoGateway;
     private readonly IUnitOfWork _unitOfWork;
 
     public CrearReservaUseCase(
@@ -29,6 +31,8 @@ public class CrearReservaUseCase
         IRecursoRepository recursoRepository,
         IReservaRepository reservaRepository,
         IClienteRepository clienteRepository,
+        IConfiguracionPagoRepository configuracionPagoRepository,
+        IPagoGateway pagoGateway,
         IUnitOfWork unitOfWork)
     {
         _validator = validator;
@@ -36,11 +40,14 @@ public class CrearReservaUseCase
         _recursoRepository = recursoRepository;
         _reservaRepository = reservaRepository;
         _clienteRepository = clienteRepository;
+        _configuracionPagoRepository = configuracionPagoRepository;
+        _pagoGateway = pagoGateway;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<ReservaResponse>> ExecuteAsync(
-        string slug, Guid recursoId, CrearReservaRequest request, CancellationToken cancellationToken = default)
+        string slug, Guid recursoId, CrearReservaRequest request, string webhookBaseUrl,
+        CancellationToken cancellationToken = default)
     {
         var validation = await _validator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
@@ -98,13 +105,39 @@ public class CrearReservaUseCase
             await _reservaRepository.AddAsync(reserva, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+            var linkPago = await CrearLinkPagoAsync(negocio.Id, slug, recurso, reserva, webhookBaseUrl, cancellationToken);
+
             return Result.Success(new ReservaResponse(
                 reserva.Id, reserva.RecursoId, reserva.ClienteId, reserva.Fecha,
-                reserva.HoraInicio, reserva.HoraFin, reserva.PrecioTotal, reserva.Estado));
+                reserva.HoraInicio, reserva.HoraFin, reserva.PrecioTotal, reserva.Estado, linkPago));
         }
         catch (DomainException ex)
         {
             return Result.Failure<ReservaResponse>(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Si el negocio tiene Mercado Pago conectado con un AccessToken, crea la preferencia de Checkout
+    /// Pro y devuelve su link. Es best-effort: si la pasarela falla (caída, token inválido), la
+    /// reserva ya quedó creada igual y el dueño sigue el flujo manual de confirmar el pago a mano.
+    /// </summary>
+    private async Task<string?> CrearLinkPagoAsync(
+        Guid negocioId, string slug, Recurso recurso, Reserva reserva, string webhookBaseUrl,
+        CancellationToken cancellationToken)
+    {
+        var configuracionPago = await _configuracionPagoRepository.GetActivaByNegocioIdAsync(negocioId, cancellationToken);
+        if (configuracionPago is not { Proveedor: ProveedorPago.MercadoPago, AccessToken: not null })
+            return null;
+
+        var notificationUrl =
+            $"{webhookBaseUrl}/api/public/negocios/{slug}/reservas/{reserva.Id}/pago/webhook/mercadopago";
+
+        var preferenciaResult = await _pagoGateway.CrearPreferenciaAsync(
+            new CrearPreferenciaPagoRequest(
+                configuracionPago.AccessToken, reserva.Id, $"Turno en {recurso.Nombre}", reserva.PrecioTotal, notificationUrl),
+            cancellationToken);
+
+        return preferenciaResult.IsSuccess ? preferenciaResult.Value.LinkPago : null;
     }
 }

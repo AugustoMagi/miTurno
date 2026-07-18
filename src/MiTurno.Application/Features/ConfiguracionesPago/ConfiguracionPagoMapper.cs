@@ -9,6 +9,7 @@ internal static class ConfiguracionPagoMapper
         configuracion.Id,
         configuracion.Proveedor,
         configuracion.Alias,
+        configuracion.AccessToken is not null,
         configuracion.Activo,
         configuracion.FechaCreacion);
 }

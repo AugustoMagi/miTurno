@@ -6,5 +6,6 @@ public record ConfiguracionPagoResponse(
     Guid Id,
     ProveedorPago Proveedor,
     string Alias,
+    bool TieneAccessToken,
     bool Activo,
     DateTime FechaCreacion);

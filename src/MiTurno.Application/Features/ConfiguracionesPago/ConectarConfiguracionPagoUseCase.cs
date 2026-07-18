@@ -45,7 +45,7 @@ public class ConectarConfiguracionPagoUseCase
                 _configuracionPagoRepository.Update(activaAnterior);
             }
 
-            var configuracion = ConfiguracionPago.Conectar(negocioId, request.Proveedor, request.Alias);
+            var configuracion = ConfiguracionPago.Conectar(negocioId, request.Proveedor, request.Alias, request.AccessToken);
             await _configuracionPagoRepository.AddAsync(configuracion, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);

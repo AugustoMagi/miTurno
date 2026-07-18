@@ -9,5 +9,6 @@ public class ConectarConfiguracionPagoValidator : AbstractValidator<ConectarConf
     {
         RuleFor(x => x.Proveedor).IsInEnum();
         RuleFor(x => x.Alias).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.AccessToken).MaximumLength(300).When(x => x.AccessToken is not null);
     }
 }
