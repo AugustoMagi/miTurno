@@ -1,3 +1,4 @@
+
 using MiTurno.Domain.Common;
 using MiTurno.Domain.Exceptions;
 

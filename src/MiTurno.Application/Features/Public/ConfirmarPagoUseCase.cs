@@ -67,6 +67,11 @@ public class ConfirmarPagoUseCase
                     cliente!.Email, cliente.Nombre, negocio.Nombre, recurso.Nombre,
                     reserva.Fecha, reserva.HoraInicio, reserva.HoraFin),
                 cancellationToken);
+            await _emailNotificador.NotificarNuevaReservaAlDuenioAsync(
+                new NotificacionNuevaReserva(
+                    negocio.Email, negocio.Nombre, cliente.Nombre, recurso.Nombre,
+                    reserva.Fecha, reserva.HoraInicio, reserva.HoraFin, reserva.PrecioTotal),
+                cancellationToken);
 
             return Result.Success(new ReservaResponse(
                 reserva.Id, reserva.RecursoId, reserva.ClienteId, reserva.Fecha,

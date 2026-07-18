@@ -45,8 +45,20 @@ public class SmtpEmailNotificador : IEmailNotificador
             "Si tenías un pago realizado, el negocio se pondrá en contacto para el reembolso.",
             cancellationToken);
 
+    public Task NotificarNuevaReservaAlDuenioAsync(NotificacionNuevaReserva n, CancellationToken cancellationToken = default) =>
+        EnviarAsync(
+            n.NegocioEmail,
+            $"Nueva reserva confirmada en {n.NegocioNombre}",
+            $"Hola,\n\n" +
+            $"{n.ClienteNombre} confirmó una reserva en {n.RecursoNombre} para el {FormatearFecha(n.Fecha, n.HoraInicio, n.HoraFin)} " +
+            $"por ${n.PrecioTotal}.",
+            cancellationToken);
+
     private static string FormatearFecha(NotificacionReserva n) =>
-        $"{n.Fecha:dd/MM/yyyy} de {n.HoraInicio:hh\\:mm} a {n.HoraFin:hh\\:mm}";
+        FormatearFecha(n.Fecha, n.HoraInicio, n.HoraFin);
+
+    private static string FormatearFecha(DateOnly fecha, TimeSpan horaInicio, TimeSpan horaFin) =>
+        $"{fecha:dd/MM/yyyy} de {horaInicio:hh\\:mm} a {horaFin:hh\\:mm}";
 
     // Envío best-effort: si el SMTP no está configurado (entornos de desarrollo) o falla el envío,
     // se registra en el log en lugar de propagar la excepción, para no malograr una operación de

@@ -5,4 +5,7 @@
     <Project Path="src/MiTurno.Infrastructure/MiTurno.Infrastructure.csproj" />
     <Project Path="src/MiTurno.Presentation/MiTurno.Presentation.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MiTurno.Application.Tests/MiTurno.Application.Tests.csproj" />
+  </Folder>
 </Solution>
