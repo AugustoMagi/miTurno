@@ -12,6 +12,7 @@ public class Suscripcion : BaseEntity
     public EstadoSuscripcion Estado { get; private set; }
     public DateTime FechaInicio { get; private set; }
     public DateTime FechaProximoVencimiento { get; private set; }
+    public bool NotificacionVencimientoEnviada { get; private set; }
 
     private readonly List<PagoSuscripcion> _pagos = [];
     public IReadOnlyCollection<PagoSuscripcion> Pagos => _pagos.AsReadOnly();
@@ -52,6 +53,13 @@ public class Suscripcion : BaseEntity
 
         Estado = EstadoSuscripcion.Activa;
         FechaProximoVencimiento = nuevoVencimiento;
+        NotificacionVencimientoEnviada = false;
+        MarcarActualizado();
+    }
+
+    public void MarcarNotificacionVencimientoEnviada()
+    {
+        NotificacionVencimientoEnviada = true;
         MarcarActualizado();
     }
 

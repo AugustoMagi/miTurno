@@ -77,6 +77,7 @@ public static class DependencyInjection
         services.AddScoped<ObtenerMiSuscripcionUseCase>();
         services.AddScoped<GenerarPagoSuscripcionUseCase>();
         services.AddScoped<ProcesarNotificacionPagoSuscripcionUseCase>();
+        services.AddScoped<NotificarSuscripcionesPorVencerUseCase>();
 
         return services;
     }

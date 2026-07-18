@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Infrastructure.Auth;
+using MiTurno.Infrastructure.BackgroundJobs;
 using MiTurno.Infrastructure.Notifications;
 using MiTurno.Infrastructure.Pagos;
 using MiTurno.Infrastructure.Persistence;
@@ -44,6 +45,8 @@ public static class DependencyInjection
         services.AddScoped<IPlataformaPagoConfiguracion, PlataformaPagoConfiguracion>();
 
         services.AddDataProtection();
+
+        services.AddHostedService<SuscripcionVencimientoBackgroundService>();
 
         return services;
     }

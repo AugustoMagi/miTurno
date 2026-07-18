@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Domain.Entities;
+using MiTurno.Domain.Enums;
 
 namespace MiTurno.Infrastructure.Persistence.Repositories;
 
@@ -21,4 +22,14 @@ public class SuscripcionRepository : Repository<Suscripcion>, ISuscripcionReposi
 
     public async Task<IReadOnlyList<Suscripcion>> GetAllAsync(CancellationToken cancellationToken = default) =>
         await DbSet.Include(s => s.Plan).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Suscripcion>> GetPendientesDeNotificarVencimientoAsync(
+        DateTime hasta, CancellationToken cancellationToken = default) =>
+        await DbSet
+            .Include(s => s.Plan)
+            .Where(s =>
+                (s.Estado == EstadoSuscripcion.Activa || s.Estado == EstadoSuscripcion.EnPrueba)
+                && !s.NotificacionVencimientoEnviada
+                && s.FechaProximoVencimiento <= hasta)
+            .ToListAsync(cancellationToken);
 }

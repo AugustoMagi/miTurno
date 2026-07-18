@@ -19,4 +19,6 @@ public interface IEmailNotificador
     Task NotificarNuevaReservaAlDuenioAsync(NotificacionNuevaReserva notificacion, CancellationToken cancellationToken = default);
 
     Task NotificarReservaCanceladaPorClienteAsync(NotificacionNuevaReserva notificacion, CancellationToken cancellationToken = default);
+
+    Task NotificarSuscripcionPorVencerAsync(NotificacionSuscripcionPorVencer notificacion, CancellationToken cancellationToken = default);
 }

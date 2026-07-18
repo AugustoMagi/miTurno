@@ -63,6 +63,15 @@ public class SmtpEmailNotificador : IEmailNotificador
             "El horario volvió a estar disponible.",
             cancellationToken);
 
+    public Task NotificarSuscripcionPorVencerAsync(NotificacionSuscripcionPorVencer n, CancellationToken cancellationToken = default) =>
+        EnviarAsync(
+            n.NegocioEmail,
+            $"Tu suscripción a MiTurno vence pronto",
+            $"Hola,\n\n" +
+            $"Tu suscripción al plan {n.PlanNombre} vence el {n.FechaVencimiento:dd/MM/yyyy}. " +
+            "Renová a tiempo para que tu link público de reservas no quede bloqueado.",
+            cancellationToken);
+
     private static string FormatearFecha(NotificacionReserva n) =>
         FormatearFecha(n.Fecha, n.HoraInicio, n.HoraFin);
 
