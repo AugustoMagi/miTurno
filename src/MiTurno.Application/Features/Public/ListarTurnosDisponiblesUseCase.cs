@@ -1,5 +1,6 @@
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Public.Dtos;
 using MiTurno.Domain.Enums;
 
@@ -11,16 +12,16 @@ namespace MiTurno.Application.Features.Public;
 /// </summary>
 public class ListarTurnosDisponiblesUseCase
 {
-    private readonly INegocioRepository _negocioRepository;
+    private readonly ResolverNegocioPublicoService _resolverNegocioPublicoService;
     private readonly IRecursoRepository _recursoRepository;
     private readonly IReservaRepository _reservaRepository;
 
     public ListarTurnosDisponiblesUseCase(
-        INegocioRepository negocioRepository,
+        ResolverNegocioPublicoService resolverNegocioPublicoService,
         IRecursoRepository recursoRepository,
         IReservaRepository reservaRepository)
     {
-        _negocioRepository = negocioRepository;
+        _resolverNegocioPublicoService = resolverNegocioPublicoService;
         _recursoRepository = recursoRepository;
         _reservaRepository = reservaRepository;
     }
@@ -31,9 +32,10 @@ public class ListarTurnosDisponiblesUseCase
         if (fecha < DateOnly.FromDateTime(DateTime.UtcNow))
             return Result.Failure<IReadOnlyList<TurnoDisponibleResponse>>("No se pueden consultar turnos de fechas pasadas.");
 
-        var negocio = await _negocioRepository.GetBySlugAsync(slug, cancellationToken);
-        if (negocio is null || !negocio.Activo)
-            return Result.Failure<IReadOnlyList<TurnoDisponibleResponse>>("Negocio no encontrado.");
+        var negocioResult = await _resolverNegocioPublicoService.ResolverAsync(slug, cancellationToken);
+        if (negocioResult.IsFailure)
+            return Result.Failure<IReadOnlyList<TurnoDisponibleResponse>>(negocioResult.Error!);
+        var negocio = negocioResult.Value;
 
         var recurso = await _recursoRepository.GetConHorariosYBloqueosAsync(recursoId, cancellationToken);
         if (recurso is null || recurso.NegocioId != negocio.Id || !recurso.Activo)

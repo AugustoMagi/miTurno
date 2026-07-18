@@ -24,6 +24,7 @@ public static class DependencyInjection
 
         services.AddScoped<INegocioRepository, NegocioRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<ISysAdminRepository, SysAdminRepository>();
         services.AddScoped<IPlanRepository, PlanRepository>();
         services.AddScoped<ISuscripcionRepository, SuscripcionRepository>();
         services.AddScoped<IConfiguracionPagoRepository, ConfiguracionPagoRepository>();
@@ -39,6 +40,8 @@ public static class DependencyInjection
         services.AddScoped<IEmailNotificador, SmtpEmailNotificador>();
 
         services.AddHttpClient<IPagoGateway, MercadoPagoGateway>();
+        services.Configure<MercadoPagoPlataformaSettings>(configuration.GetSection(MercadoPagoPlataformaSettings.SectionName));
+        services.AddScoped<IPlataformaPagoConfiguracion, PlataformaPagoConfiguracion>();
 
         services.AddDataProtection();
 

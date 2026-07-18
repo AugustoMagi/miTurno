@@ -10,11 +10,15 @@ public class SuscripcionRepository : Repository<Suscripcion>, ISuscripcionReposi
     {
     }
 
-    // Suscripcion.Plan es una navegación requerida (no nula): siempre se incluye para
-    // no dejarla en null al materializar la entidad.
+    // Suscripcion.Plan es una navegación requerida (no nula): siempre se incluye para no dejarla en
+    // null al materializar la entidad. Pagos también se incluye siempre, para que agregar un nuevo
+    // PagoSuscripcion a la colección y actualizar la Suscripcion lo persista correctamente.
     public override Task<Suscripcion?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        DbSet.Include(s => s.Plan).FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+        DbSet.Include(s => s.Plan).Include(s => s.Pagos).FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
     public Task<Suscripcion?> GetByNegocioIdAsync(Guid negocioId, CancellationToken cancellationToken = default) =>
-        DbSet.Include(s => s.Plan).FirstOrDefaultAsync(s => s.NegocioId == negocioId, cancellationToken);
+        DbSet.Include(s => s.Plan).Include(s => s.Pagos).FirstOrDefaultAsync(s => s.NegocioId == negocioId, cancellationToken);
+
+    public async Task<IReadOnlyList<Suscripcion>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        await DbSet.Include(s => s.Plan).ToListAsync(cancellationToken);
 }

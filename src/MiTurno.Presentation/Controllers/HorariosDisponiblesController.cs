@@ -8,7 +8,7 @@ namespace MiTurno.Presentation.Controllers;
 
 [ApiController]
 [Route("api/recursos/{recursoId:guid}/horarios")]
-[Authorize]
+[Authorize(Roles = "Owner,Empleado")]
 public class HorariosDisponiblesController : ControllerBase
 {
     private readonly AgregarHorarioDisponibleUseCase _agregarHorarioDisponibleUseCase;

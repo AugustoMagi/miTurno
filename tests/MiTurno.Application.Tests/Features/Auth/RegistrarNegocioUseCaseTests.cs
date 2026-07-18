@@ -10,6 +10,8 @@ public class RegistrarNegocioUseCaseTests
 {
     private readonly INegocioRepository _negocioRepository = Substitute.For<INegocioRepository>();
     private readonly IUsuarioRepository _usuarioRepository = Substitute.For<IUsuarioRepository>();
+    private readonly IPlanRepository _planRepository = Substitute.For<IPlanRepository>();
+    private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
     private readonly IJwtTokenGenerator _jwtTokenGenerator = Substitute.For<IJwtTokenGenerator>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -20,10 +22,11 @@ public class RegistrarNegocioUseCaseTests
     {
         _useCase = new RegistrarNegocioUseCase(
             new RegistrarNegocioValidator(), _negocioRepository, _usuarioRepository,
-            _passwordHasher, _jwtTokenGenerator, _unitOfWork);
+            _planRepository, _suscripcionRepository, _passwordHasher, _jwtTokenGenerator, _unitOfWork);
 
         _negocioRepository.GetBySlugAsync(Arg.Any<string>()).Returns((Negocio?)null);
         _usuarioRepository.GetByEmailAsync(Arg.Any<string>()).Returns((Usuario?)null);
+        _planRepository.GetPlanDePruebaAsync().Returns((Plan?)null);
         _passwordHasher.Hash(Arg.Any<string>()).Returns("hash-seguro");
         _jwtTokenGenerator.GenerarToken(Arg.Any<Usuario>()).Returns("token-jwt");
     }
@@ -94,5 +97,29 @@ public class RegistrarNegocioUseCaseTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("al menos 8 caracteres");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConPlanDePruebaConfigurado_IniciaLaSuscripcionEnPrueba()
+    {
+        var planDePrueba = Plan.Crear("Prueba", 0m, Periodicidad.Mensual, 1, 50);
+        planDePrueba.MarcarComoPlanDePrueba();
+        _planRepository.GetPlanDePruebaAsync().Returns(planDePrueba);
+
+        var result = await _useCase.ExecuteAsync(RequestValido());
+
+        result.IsSuccess.Should().BeTrue();
+        await _suscripcionRepository.Received(1).AddAsync(
+            Arg.Is<Suscripcion>(s => s!.PlanId == planDePrueba.Id && s.Estado == EstadoSuscripcion.EnPrueba),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SinPlanDePruebaConfigurado_NoCreaSuscripcionNiFalla()
+    {
+        var result = await _useCase.ExecuteAsync(RequestValido());
+
+        result.IsSuccess.Should().BeTrue();
+        await _suscripcionRepository.DidNotReceive().AddAsync(Arg.Any<Suscripcion>(), Arg.Any<CancellationToken>());
     }
 }

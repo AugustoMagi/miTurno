@@ -18,7 +18,7 @@ public class Suscripcion : BaseEntity
 
     private Suscripcion() { }
 
-    public static Suscripcion IniciarPrueba(Guid negocioId, Guid planId, int diasPrueba = 14)
+    public static Suscripcion IniciarPrueba(Guid negocioId, Plan plan, int diasPrueba = 14)
     {
         if (diasPrueba <= 0)
             throw new DomainException("Los días de prueba deben ser mayores a cero.");
@@ -27,7 +27,8 @@ public class Suscripcion : BaseEntity
         return new Suscripcion
         {
             NegocioId = negocioId,
-            PlanId = planId,
+            PlanId = plan.Id,
+            Plan = plan,
             Estado = EstadoSuscripcion.EnPrueba,
             FechaInicio = ahora,
             FechaProximoVencimiento = ahora.AddDays(diasPrueba)
@@ -70,4 +71,11 @@ public class Suscripcion : BaseEntity
     }
 
     public void RegistrarPago(PagoSuscripcion pago) => _pagos.Add(pago);
+
+    public void CambiarPlan(Plan nuevoPlan)
+    {
+        PlanId = nuevoPlan.Id;
+        Plan = nuevoPlan;
+        MarcarActualizado();
+    }
 }

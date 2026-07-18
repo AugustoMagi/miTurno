@@ -1,4 +1,5 @@
 using MiTurno.Application.Common.Interfaces;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Public;
 using MiTurno.Domain.Entities;
 
@@ -7,6 +8,7 @@ namespace MiTurno.Application.Tests.Features.Public;
 public class ListarTurnosDisponiblesUseCaseTests
 {
     private readonly INegocioRepository _negocioRepository = Substitute.For<INegocioRepository>();
+    private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
     private readonly IRecursoRepository _recursoRepository = Substitute.For<IRecursoRepository>();
     private readonly IReservaRepository _reservaRepository = Substitute.For<IReservaRepository>();
 
@@ -16,7 +18,8 @@ public class ListarTurnosDisponiblesUseCaseTests
 
     public ListarTurnosDisponiblesUseCaseTests()
     {
-        _useCase = new ListarTurnosDisponiblesUseCase(_negocioRepository, _recursoRepository, _reservaRepository);
+        var resolverNegocioPublicoService = new ResolverNegocioPublicoService(_negocioRepository, _suscripcionRepository);
+        _useCase = new ListarTurnosDisponiblesUseCase(resolverNegocioPublicoService, _recursoRepository, _reservaRepository);
     }
 
     private (Negocio negocio, Recurso recurso) EscenarioValido()

@@ -274,6 +274,9 @@ namespace MiTurno.Infrastructure.Persistence.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("EsPlanDePrueba")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime?>("FechaActualizacion")
                         .HasColumnType("datetime2");
 
@@ -419,6 +422,43 @@ namespace MiTurno.Infrastructure.Persistence.Migrations
                     b.HasIndex("PlanId");
 
                     b.ToTable("Suscripciones", (string)null);
+                });
+
+            modelBuilder.Entity("MiTurno.Domain.Entities.SysAdmin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("SysAdmins", (string)null);
                 });
 
             modelBuilder.Entity("MiTurno.Domain.Entities.Usuario", b =>

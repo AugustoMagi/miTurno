@@ -12,4 +12,10 @@ public class PlanRepository : Repository<Plan>, IPlanRepository
 
     public async Task<IReadOnlyList<Plan>> GetActivosAsync(CancellationToken cancellationToken = default) =>
         await DbSet.Where(p => p.Activo).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Plan>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        await DbSet.ToListAsync(cancellationToken);
+
+    public Task<Plan?> GetPlanDePruebaAsync(CancellationToken cancellationToken = default) =>
+        DbSet.FirstOrDefaultAsync(p => p.EsPlanDePrueba, cancellationToken);
 }

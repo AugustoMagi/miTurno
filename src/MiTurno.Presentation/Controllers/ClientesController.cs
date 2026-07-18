@@ -7,7 +7,7 @@ namespace MiTurno.Presentation.Controllers;
 
 [ApiController]
 [Route("api/clientes")]
-[Authorize]
+[Authorize(Roles = "Owner,Empleado")]
 public class ClientesController : ControllerBase
 {
     private readonly ListarClientesUseCase _listarClientesUseCase;

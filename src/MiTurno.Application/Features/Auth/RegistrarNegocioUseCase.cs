@@ -17,6 +17,8 @@ public class RegistrarNegocioUseCase
     private readonly IValidator<RegistrarNegocioRequest> _validator;
     private readonly INegocioRepository _negocioRepository;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IPlanRepository _planRepository;
+    private readonly ISuscripcionRepository _suscripcionRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IUnitOfWork _unitOfWork;
@@ -25,6 +27,8 @@ public class RegistrarNegocioUseCase
         IValidator<RegistrarNegocioRequest> validator,
         INegocioRepository negocioRepository,
         IUsuarioRepository usuarioRepository,
+        IPlanRepository planRepository,
+        ISuscripcionRepository suscripcionRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
         IUnitOfWork unitOfWork)
@@ -32,6 +36,8 @@ public class RegistrarNegocioUseCase
         _validator = validator;
         _negocioRepository = negocioRepository;
         _usuarioRepository = usuarioRepository;
+        _planRepository = planRepository;
+        _suscripcionRepository = suscripcionRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
         _unitOfWork = unitOfWork;
@@ -60,6 +66,17 @@ public class RegistrarNegocioUseCase
 
             await _negocioRepository.AddAsync(negocio, cancellationToken);
             await _usuarioRepository.AddAsync(usuario, cancellationToken);
+
+            // Si todavía no hay ningún Plan marcado como "de prueba" (ej. el SysAdmin no cargó
+            // ninguno aún), el negocio queda sin Suscripcion — el gating público lo trata como
+            // acceso permitido, no como bloqueado.
+            var planDePrueba = await _planRepository.GetPlanDePruebaAsync(cancellationToken);
+            if (planDePrueba is not null)
+            {
+                var suscripcion = Suscripcion.IniciarPrueba(negocio.Id, planDePrueba);
+                await _suscripcionRepository.AddAsync(suscripcion, cancellationToken);
+            }
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             var token = _jwtTokenGenerator.GenerarToken(usuario);

@@ -17,6 +17,7 @@ public class MiTurnoDbContext : DbContext
 
     public DbSet<Negocio> Negocios => Set<Negocio>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<SysAdmin> SysAdmins => Set<SysAdmin>();
     public DbSet<Plan> Planes => Set<Plan>();
     public DbSet<Suscripcion> Suscripciones => Set<Suscripcion>();
     public DbSet<PagoSuscripcion> PagosSuscripcion => Set<PagoSuscripcion>();

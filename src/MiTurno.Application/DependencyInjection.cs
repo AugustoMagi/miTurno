@@ -1,5 +1,9 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using MiTurno.Application.Common.Services;
+using MiTurno.Application.Features.Admin.Auth;
+using MiTurno.Application.Features.Admin.Planes;
+using MiTurno.Application.Features.Admin.Suscripciones;
 using MiTurno.Application.Features.Auth;
 using MiTurno.Application.Features.Clientes;
 using MiTurno.Application.Features.ConfiguracionesPago;
@@ -9,6 +13,7 @@ using MiTurno.Application.Features.Recursos.Bloqueos;
 using MiTurno.Application.Features.Recursos.Horarios;
 using MiTurno.Application.Features.Public;
 using MiTurno.Application.Features.Reservas;
+using MiTurno.Application.Features.Suscripciones;
 
 namespace MiTurno.Application;
 
@@ -18,8 +23,11 @@ public static class DependencyInjection
     {
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
+        services.AddScoped<ResolverNegocioPublicoService>();
+
         services.AddScoped<RegistrarNegocioUseCase>();
         services.AddScoped<LoginUseCase>();
+        services.AddScoped<LoginSysAdminUseCase>();
 
         services.AddScoped<CrearRecursoUseCase>();
         services.AddScoped<ListarRecursosUseCase>();
@@ -54,6 +62,21 @@ public static class DependencyInjection
         services.AddScoped<DesconectarConfiguracionPagoUseCase>();
 
         services.AddScoped<ObtenerEstadisticasOcupacionUseCase>();
+
+        services.AddScoped<CrearPlanUseCase>();
+        services.AddScoped<ActualizarPlanUseCase>();
+        services.AddScoped<ListarPlanesUseCase>();
+        services.AddScoped<DesactivarPlanUseCase>();
+        services.AddScoped<MarcarPlanDePruebaUseCase>();
+
+        services.AddScoped<ListarSuscripcionesUseCase>();
+        services.AddScoped<CambiarPlanSuscripcionUseCase>();
+        services.AddScoped<RenovarSuscripcionManualUseCase>();
+        services.AddScoped<CancelarSuscripcionUseCase>();
+
+        services.AddScoped<ObtenerMiSuscripcionUseCase>();
+        services.AddScoped<GenerarPagoSuscripcionUseCase>();
+        services.AddScoped<ProcesarNotificacionPagoSuscripcionUseCase>();
 
         return services;
     }

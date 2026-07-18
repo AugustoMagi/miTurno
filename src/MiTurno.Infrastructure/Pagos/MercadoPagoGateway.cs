@@ -33,7 +33,7 @@ public class MercadoPagoGateway : IPagoGateway
             {
                 new { title = request.Descripcion, quantity = 1, unit_price = request.Monto, currency_id = "ARS" }
             },
-            external_reference = request.ReservaId.ToString(),
+            external_reference = request.ExternalReferenceId.ToString(),
             notification_url = request.NotificationUrl
         });
 

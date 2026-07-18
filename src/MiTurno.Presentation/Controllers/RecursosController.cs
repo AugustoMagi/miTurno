@@ -8,7 +8,7 @@ namespace MiTurno.Presentation.Controllers;
 
 [ApiController]
 [Route("api/recursos")]
-[Authorize]
+[Authorize(Roles = "Owner,Empleado")]
 public class RecursosController : ControllerBase
 {
     private readonly CrearRecursoUseCase _crearRecursoUseCase;

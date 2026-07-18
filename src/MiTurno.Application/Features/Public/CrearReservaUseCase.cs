@@ -1,6 +1,7 @@
 using FluentValidation;
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Public.Dtos;
 using MiTurno.Domain.Entities;
 using MiTurno.Domain.Enums;
@@ -17,7 +18,7 @@ namespace MiTurno.Application.Features.Public;
 public class CrearReservaUseCase
 {
     private readonly IValidator<CrearReservaRequest> _validator;
-    private readonly INegocioRepository _negocioRepository;
+    private readonly ResolverNegocioPublicoService _resolverNegocioPublicoService;
     private readonly IRecursoRepository _recursoRepository;
     private readonly IReservaRepository _reservaRepository;
     private readonly IClienteRepository _clienteRepository;
@@ -27,7 +28,7 @@ public class CrearReservaUseCase
 
     public CrearReservaUseCase(
         IValidator<CrearReservaRequest> validator,
-        INegocioRepository negocioRepository,
+        ResolverNegocioPublicoService resolverNegocioPublicoService,
         IRecursoRepository recursoRepository,
         IReservaRepository reservaRepository,
         IClienteRepository clienteRepository,
@@ -36,7 +37,7 @@ public class CrearReservaUseCase
         IUnitOfWork unitOfWork)
     {
         _validator = validator;
-        _negocioRepository = negocioRepository;
+        _resolverNegocioPublicoService = resolverNegocioPublicoService;
         _recursoRepository = recursoRepository;
         _reservaRepository = reservaRepository;
         _clienteRepository = clienteRepository;
@@ -57,9 +58,10 @@ public class CrearReservaUseCase
         if (request.Fecha < DateOnly.FromDateTime(DateTime.UtcNow))
             return Result.Failure<ReservaResponse>("No se pueden reservar turnos en fechas pasadas.");
 
-        var negocio = await _negocioRepository.GetBySlugAsync(slug, cancellationToken);
-        if (negocio is null || !negocio.Activo)
-            return Result.Failure<ReservaResponse>("Negocio no encontrado.");
+        var negocioResult = await _resolverNegocioPublicoService.ResolverAsync(slug, cancellationToken);
+        if (negocioResult.IsFailure)
+            return Result.Failure<ReservaResponse>(negocioResult.Error!);
+        var negocio = negocioResult.Value;
 
         var recurso = await _recursoRepository.GetConHorariosYBloqueosAsync(recursoId, cancellationToken);
         if (recurso is null || recurso.NegocioId != negocio.Id || !recurso.Activo)

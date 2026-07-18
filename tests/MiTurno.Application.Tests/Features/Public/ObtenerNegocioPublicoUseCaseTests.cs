@@ -1,4 +1,5 @@
 using MiTurno.Application.Common.Interfaces;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Public;
 using MiTurno.Domain.Entities;
 
@@ -7,13 +8,15 @@ namespace MiTurno.Application.Tests.Features.Public;
 public class ObtenerNegocioPublicoUseCaseTests
 {
     private readonly INegocioRepository _negocioRepository = Substitute.For<INegocioRepository>();
+    private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
     private readonly IRecursoRepository _recursoRepository = Substitute.For<IRecursoRepository>();
 
     private readonly ObtenerNegocioPublicoUseCase _useCase;
 
     public ObtenerNegocioPublicoUseCaseTests()
     {
-        _useCase = new ObtenerNegocioPublicoUseCase(_negocioRepository, _recursoRepository);
+        var resolverNegocioPublicoService = new ResolverNegocioPublicoService(_negocioRepository, _suscripcionRepository);
+        _useCase = new ObtenerNegocioPublicoUseCase(resolverNegocioPublicoService, _recursoRepository);
     }
 
     [Fact]

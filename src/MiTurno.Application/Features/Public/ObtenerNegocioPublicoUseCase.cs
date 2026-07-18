@@ -1,5 +1,6 @@
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Public.Dtos;
 
 namespace MiTurno.Application.Features.Public;
@@ -10,20 +11,22 @@ namespace MiTurno.Application.Features.Public;
 /// </summary>
 public class ObtenerNegocioPublicoUseCase
 {
-    private readonly INegocioRepository _negocioRepository;
+    private readonly ResolverNegocioPublicoService _resolverNegocioPublicoService;
     private readonly IRecursoRepository _recursoRepository;
 
-    public ObtenerNegocioPublicoUseCase(INegocioRepository negocioRepository, IRecursoRepository recursoRepository)
+    public ObtenerNegocioPublicoUseCase(
+        ResolverNegocioPublicoService resolverNegocioPublicoService, IRecursoRepository recursoRepository)
     {
-        _negocioRepository = negocioRepository;
+        _resolverNegocioPublicoService = resolverNegocioPublicoService;
         _recursoRepository = recursoRepository;
     }
 
     public async Task<Result<NegocioPublicoResponse>> ExecuteAsync(string slug, CancellationToken cancellationToken = default)
     {
-        var negocio = await _negocioRepository.GetBySlugAsync(slug, cancellationToken);
-        if (negocio is null || !negocio.Activo)
-            return Result.Failure<NegocioPublicoResponse>("Negocio no encontrado.");
+        var negocioResult = await _resolverNegocioPublicoService.ResolverAsync(slug, cancellationToken);
+        if (negocioResult.IsFailure)
+            return Result.Failure<NegocioPublicoResponse>(negocioResult.Error!);
+        var negocio = negocioResult.Value;
 
         var recursos = await _recursoRepository.GetByNegocioIdAsync(negocio.Id, cancellationToken);
 

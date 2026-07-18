@@ -7,7 +7,7 @@ namespace MiTurno.Presentation.Controllers;
 
 [ApiController]
 [Route("api/estadisticas")]
-[Authorize]
+[Authorize(Roles = "Owner,Empleado")]
 public class EstadisticasController : ControllerBase
 {
     private readonly ObtenerEstadisticasOcupacionUseCase _obtenerEstadisticasOcupacionUseCase;

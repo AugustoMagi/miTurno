@@ -8,7 +8,7 @@ namespace MiTurno.Presentation.Controllers;
 
 [ApiController]
 [Route("api/configuracion-pago")]
-[Authorize]
+[Authorize(Roles = "Owner,Empleado")]
 public class ConfiguracionesPagoController : ControllerBase
 {
     private readonly ConectarConfiguracionPagoUseCase _conectarConfiguracionPagoUseCase;

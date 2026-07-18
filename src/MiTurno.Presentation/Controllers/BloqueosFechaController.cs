@@ -8,7 +8,7 @@ namespace MiTurno.Presentation.Controllers;
 
 [ApiController]
 [Route("api/recursos/{recursoId:guid}/bloqueos")]
-[Authorize]
+[Authorize(Roles = "Owner,Empleado")]
 public class BloqueosFechaController : ControllerBase
 {
     private readonly AgregarBloqueoFechaUseCase _agregarBloqueoFechaUseCase;

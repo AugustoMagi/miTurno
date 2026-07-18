@@ -1,5 +1,6 @@
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Public;
 using MiTurno.Application.Features.Public.Dtos;
 using MiTurno.Domain.Entities;
@@ -12,6 +13,7 @@ public class CrearReservaUseCaseTests
     private const string WebhookBaseUrl = "https://miturno.test";
 
     private readonly INegocioRepository _negocioRepository = Substitute.For<INegocioRepository>();
+    private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
     private readonly IRecursoRepository _recursoRepository = Substitute.For<IRecursoRepository>();
     private readonly IReservaRepository _reservaRepository = Substitute.For<IReservaRepository>();
     private readonly IClienteRepository _clienteRepository = Substitute.For<IClienteRepository>();
@@ -25,8 +27,9 @@ public class CrearReservaUseCaseTests
 
     public CrearReservaUseCaseTests()
     {
+        var resolverNegocioPublicoService = new ResolverNegocioPublicoService(_negocioRepository, _suscripcionRepository);
         _useCase = new CrearReservaUseCase(
-            new CrearReservaValidator(), _negocioRepository, _recursoRepository, _reservaRepository,
+            new CrearReservaValidator(), resolverNegocioPublicoService, _recursoRepository, _reservaRepository,
             _clienteRepository, _configuracionPagoRepository, _pagoGateway, _unitOfWork);
     }
 
