@@ -11,6 +11,7 @@ public class ListarTurnosDisponiblesUseCaseTests
     private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
     private readonly IRecursoRepository _recursoRepository = Substitute.For<IRecursoRepository>();
     private readonly IReservaRepository _reservaRepository = Substitute.For<IReservaRepository>();
+    private readonly IClock _clock = Substitute.For<IClock>();
 
     private readonly ListarTurnosDisponiblesUseCase _useCase;
 
@@ -18,8 +19,9 @@ public class ListarTurnosDisponiblesUseCaseTests
 
     public ListarTurnosDisponiblesUseCaseTests()
     {
+        _clock.Now.Returns(DateTime.UtcNow);
         var resolverNegocioPublicoService = new ResolverNegocioPublicoService(_negocioRepository, _suscripcionRepository);
-        _useCase = new ListarTurnosDisponiblesUseCase(resolverNegocioPublicoService, _recursoRepository, _reservaRepository);
+        _useCase = new ListarTurnosDisponiblesUseCase(resolverNegocioPublicoService, _recursoRepository, _reservaRepository, _clock);
     }
 
     private (Negocio negocio, Recurso recurso) EscenarioValido()
@@ -89,6 +91,29 @@ public class ListarTurnosDisponiblesUseCaseTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConFechaDeHoyYTurnosYaPasados_LosExcluyeYDejaSoloLosFuturos()
+    {
+        var ahora = new DateTime(2026, 3, 10, 19, 30, 0, DateTimeKind.Utc);
+        var hoy = DateOnly.FromDateTime(ahora);
+        _clock.Now.Returns(ahora);
+
+        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        var recurso = Recurso.Crear(negocio.Id, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        recurso.AgregarHorarioDisponible(HorarioDisponible.Crear(
+            recurso.Id, hoy.DayOfWeek, TimeSpan.FromHours(18), TimeSpan.FromHours(21)));
+
+        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+        _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, hoy).Returns([]);
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, hoy);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle();
+        result.Value[0].HoraInicio.Should().Be(TimeSpan.FromHours(20));
     }
 
     [Fact]

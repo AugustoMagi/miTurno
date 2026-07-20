@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Infrastructure.Auth;
 using MiTurno.Infrastructure.BackgroundJobs;
+using MiTurno.Infrastructure.Common;
 using MiTurno.Infrastructure.Notifications;
 using MiTurno.Infrastructure.Pagos;
 using MiTurno.Infrastructure.Persistence;
@@ -22,6 +23,8 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddSingleton<IClock, SystemClock>();
 
         services.AddScoped<INegocioRepository, NegocioRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();

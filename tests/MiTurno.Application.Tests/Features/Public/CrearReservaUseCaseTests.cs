@@ -20,6 +20,7 @@ public class CrearReservaUseCaseTests
     private readonly IConfiguracionPagoRepository _configuracionPagoRepository = Substitute.For<IConfiguracionPagoRepository>();
     private readonly IPagoGateway _pagoGateway = Substitute.For<IPagoGateway>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly IClock _clock = Substitute.For<IClock>();
 
     private readonly CrearReservaUseCase _useCase;
 
@@ -27,10 +28,11 @@ public class CrearReservaUseCaseTests
 
     public CrearReservaUseCaseTests()
     {
+        _clock.Now.Returns(DateTime.UtcNow);
         var resolverNegocioPublicoService = new ResolverNegocioPublicoService(_negocioRepository, _suscripcionRepository);
         _useCase = new CrearReservaUseCase(
             new CrearReservaValidator(), resolverNegocioPublicoService, _recursoRepository, _reservaRepository,
-            _clienteRepository, _configuracionPagoRepository, _pagoGateway, _unitOfWork);
+            _clienteRepository, _configuracionPagoRepository, _pagoGateway, _unitOfWork, _clock);
     }
 
     private (Negocio negocio, Recurso recurso) EscenarioValido()
@@ -93,6 +95,42 @@ public class CrearReservaUseCaseTests
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("No se pueden reservar turnos en fechas pasadas.");
         await _negocioRepository.DidNotReceive().GetBySlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConHorarioDeHoyYaPasado_DevuelveFailureSinConsultarNegocio()
+    {
+        var ahora = new DateTime(2026, 3, 10, 19, 30, 0, DateTimeKind.Utc);
+        _clock.Now.Returns(ahora);
+        var request = RequestValido() with { Fecha = DateOnly.FromDateTime(ahora), HoraInicio = TimeSpan.FromHours(18) };
+
+        var result = await _useCase.ExecuteAsync("cancha-norte", Guid.NewGuid(), request, WebhookBaseUrl);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("No se pueden reservar turnos que ya pasaron.");
+        await _negocioRepository.DidNotReceive().GetBySlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConHorarioDeHoyAunNoPasado_PermiteLaReserva()
+    {
+        var ahora = new DateTime(2026, 3, 10, 19, 30, 0, DateTimeKind.Utc);
+        var hoy = DateOnly.FromDateTime(ahora);
+        _clock.Now.Returns(ahora);
+
+        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        var recurso = Recurso.Crear(negocio.Id, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        recurso.AgregarHorarioDisponible(HorarioDisponible.Crear(
+            recurso.Id, hoy.DayOfWeek, TimeSpan.FromHours(18), TimeSpan.FromHours(21)));
+        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+        _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, hoy).Returns([]);
+        _clienteRepository.GetByEmailAsync("juan@test.com").Returns((Cliente?)null);
+
+        var request = RequestValido() with { Fecha = hoy, HoraInicio = TimeSpan.FromHours(20) };
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, request, WebhookBaseUrl);
+
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Fact]
@@ -195,6 +233,23 @@ public class CrearReservaUseCaseTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.LinkPago.Should().BeNull();
+        result.Value.AliasPago.Should().BeNull();
+        await _pagoGateway.DidNotReceive().CrearPreferenciaAsync(Arg.Any<CrearPreferenciaPagoRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConAliasPeroSinAccessToken_NoLlamaAlGatewayYDevuelveElAliasParaTransferenciaManual()
+    {
+        var (negocio, recurso) = EscenarioValido();
+        _clienteRepository.GetByEmailAsync("juan@test.com").Returns((Cliente?)null);
+        var configuracionPago = ConfiguracionPago.Conectar(negocio.Id, ProveedorPago.MercadoPago, "alias.mp");
+        _configuracionPagoRepository.GetActivaByNegocioIdAsync(negocio.Id).Returns(configuracionPago);
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.LinkPago.Should().BeNull();
+        result.Value.AliasPago.Should().Be("alias.mp");
         await _pagoGateway.DidNotReceive().CrearPreferenciaAsync(Arg.Any<CrearPreferenciaPagoRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -212,6 +267,7 @@ public class CrearReservaUseCaseTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.LinkPago.Should().Be("https://mp.test/pagar/pref-1");
+        result.Value.AliasPago.Should().BeNull();
         await _pagoGateway.Received(1).CrearPreferenciaAsync(
             Arg.Is<CrearPreferenciaPagoRequest>(r =>
                 r!.AccessToken == "TEST-ACCESS-TOKEN" &&
@@ -235,6 +291,7 @@ public class CrearReservaUseCaseTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.LinkPago.Should().BeNull();
+        result.Value.AliasPago.Should().Be("alias.mp");
         await _reservaRepository.Received(1).AddAsync(Arg.Any<Reserva>(), Arg.Any<CancellationToken>());
     }
 }

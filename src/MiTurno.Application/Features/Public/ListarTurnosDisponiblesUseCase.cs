@@ -15,21 +15,25 @@ public class ListarTurnosDisponiblesUseCase
     private readonly ResolverNegocioPublicoService _resolverNegocioPublicoService;
     private readonly IRecursoRepository _recursoRepository;
     private readonly IReservaRepository _reservaRepository;
+    private readonly IClock _clock;
 
     public ListarTurnosDisponiblesUseCase(
         ResolverNegocioPublicoService resolverNegocioPublicoService,
         IRecursoRepository recursoRepository,
-        IReservaRepository reservaRepository)
+        IReservaRepository reservaRepository,
+        IClock clock)
     {
         _resolverNegocioPublicoService = resolverNegocioPublicoService;
         _recursoRepository = recursoRepository;
         _reservaRepository = reservaRepository;
+        _clock = clock;
     }
 
     public async Task<Result<IReadOnlyList<TurnoDisponibleResponse>>> ExecuteAsync(
         string slug, Guid recursoId, DateOnly fecha, CancellationToken cancellationToken = default)
     {
-        if (fecha < DateOnly.FromDateTime(DateTime.UtcNow))
+        var ahora = _clock.Now;
+        if (fecha < DateOnly.FromDateTime(ahora))
             return Result.Failure<IReadOnlyList<TurnoDisponibleResponse>>("No se pueden consultar turnos de fechas pasadas.");
 
         var negocioResult = await _resolverNegocioPublicoService.ResolverAsync(slug, cancellationToken);
@@ -47,6 +51,8 @@ public class ListarTurnosDisponiblesUseCase
         var reservasDelDia = await _reservaRepository.GetByRecursoYFechaAsync(recursoId, fecha, cancellationToken);
         var reservasActivas = reservasDelDia.Where(r => r.Estado != EstadoReserva.Cancelada).ToList();
 
+        var esHoy = fecha == DateOnly.FromDateTime(ahora);
+
         var turnos = new List<TurnoDisponibleResponse>();
         foreach (var horario in recurso.HorariosDisponibles.Where(h => h.DiaSemana == fecha.DayOfWeek))
         {
@@ -55,8 +61,9 @@ public class ListarTurnosDisponiblesUseCase
             {
                 var fin = inicio + recurso.DuracionTurno;
 
+                var yaPaso = esHoy && inicio <= ahora.TimeOfDay;
                 var ocupado = reservasActivas.Any(r => r.HoraInicio < fin && inicio < r.HoraFin);
-                if (!ocupado)
+                if (!yaPaso && !ocupado)
                     turnos.Add(new TurnoDisponibleResponse(inicio, fin));
 
                 inicio = fin;

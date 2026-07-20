@@ -25,6 +25,7 @@ public class CrearReservaUseCase
     private readonly IConfiguracionPagoRepository _configuracionPagoRepository;
     private readonly IPagoGateway _pagoGateway;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IClock _clock;
 
     public CrearReservaUseCase(
         IValidator<CrearReservaRequest> validator,
@@ -34,7 +35,8 @@ public class CrearReservaUseCase
         IClienteRepository clienteRepository,
         IConfiguracionPagoRepository configuracionPagoRepository,
         IPagoGateway pagoGateway,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IClock clock)
     {
         _validator = validator;
         _resolverNegocioPublicoService = resolverNegocioPublicoService;
@@ -44,6 +46,7 @@ public class CrearReservaUseCase
         _configuracionPagoRepository = configuracionPagoRepository;
         _pagoGateway = pagoGateway;
         _unitOfWork = unitOfWork;
+        _clock = clock;
     }
 
     public async Task<Result<ReservaResponse>> ExecuteAsync(
@@ -55,8 +58,12 @@ public class CrearReservaUseCase
             return Result.Failure<ReservaResponse>(
                 string.Join(" ", validation.Errors.Select(e => e.ErrorMessage)));
 
-        if (request.Fecha < DateOnly.FromDateTime(DateTime.UtcNow))
+        var ahora = _clock.Now;
+        if (request.Fecha < DateOnly.FromDateTime(ahora))
             return Result.Failure<ReservaResponse>("No se pueden reservar turnos en fechas pasadas.");
+
+        if (request.Fecha == DateOnly.FromDateTime(ahora) && request.HoraInicio <= ahora.TimeOfDay)
+            return Result.Failure<ReservaResponse>("No se pueden reservar turnos que ya pasaron.");
 
         var negocioResult = await _resolverNegocioPublicoService.ResolverAsync(slug, cancellationToken);
         if (negocioResult.IsFailure)
@@ -107,11 +114,12 @@ public class CrearReservaUseCase
             await _reservaRepository.AddAsync(reserva, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            var linkPago = await CrearLinkPagoAsync(negocio.Id, slug, recurso, reserva, webhookBaseUrl, cancellationToken);
+            var (linkPago, aliasPago) = await ResolverDatosDePagoAsync(
+                negocio.Id, slug, recurso, reserva, webhookBaseUrl, cancellationToken);
 
             return Result.Success(new ReservaResponse(
                 reserva.Id, reserva.RecursoId, reserva.ClienteId, reserva.Fecha,
-                reserva.HoraInicio, reserva.HoraFin, reserva.PrecioTotal, reserva.Estado, linkPago));
+                reserva.HoraInicio, reserva.HoraFin, reserva.PrecioTotal, reserva.Estado, linkPago, aliasPago));
         }
         catch (DomainException ex)
         {
@@ -121,16 +129,21 @@ public class CrearReservaUseCase
 
     /// <summary>
     /// Si el negocio tiene Mercado Pago conectado con un AccessToken, crea la preferencia de Checkout
-    /// Pro y devuelve su link. Es best-effort: si la pasarela falla (caída, token inválido), la
-    /// reserva ya quedó creada igual y el dueño sigue el flujo manual de confirmar el pago a mano.
+    /// Pro y devuelve su link. Es best-effort: si la pasarela falla (caída, token inválido) o el
+    /// negocio no tiene AccessToken (solo cargó su alias para transferencias manuales), no hay link
+    /// pero sí devolvemos el alias para que el cliente sepa a dónde transferir mientras el dueño
+    /// confirma el pago a mano.
     /// </summary>
-    private async Task<string?> CrearLinkPagoAsync(
+    private async Task<(string? LinkPago, string? AliasPago)> ResolverDatosDePagoAsync(
         Guid negocioId, string slug, Recurso recurso, Reserva reserva, string webhookBaseUrl,
         CancellationToken cancellationToken)
     {
         var configuracionPago = await _configuracionPagoRepository.GetActivaByNegocioIdAsync(negocioId, cancellationToken);
+        if (configuracionPago is null)
+            return (null, null);
+
         if (configuracionPago is not { Proveedor: ProveedorPago.MercadoPago, AccessToken: not null })
-            return null;
+            return (null, configuracionPago.Alias);
 
         var notificationUrl =
             $"{webhookBaseUrl}/api/public/negocios/{slug}/reservas/{reserva.Id}/pago/webhook/mercadopago";
@@ -140,6 +153,8 @@ public class CrearReservaUseCase
                 configuracionPago.AccessToken, reserva.Id, $"Turno en {recurso.Nombre}", reserva.PrecioTotal, notificationUrl),
             cancellationToken);
 
-        return preferenciaResult.IsSuccess ? preferenciaResult.Value.LinkPago : null;
+        return preferenciaResult.IsSuccess
+            ? (preferenciaResult.Value.LinkPago, null)
+            : (null, configuracionPago.Alias);
     }
 }
