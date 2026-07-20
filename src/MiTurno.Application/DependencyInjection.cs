@@ -11,6 +11,7 @@ using MiTurno.Application.Features.Estadisticas;
 using MiTurno.Application.Features.Recursos;
 using MiTurno.Application.Features.Recursos.Bloqueos;
 using MiTurno.Application.Features.Recursos.Horarios;
+using MiTurno.Application.Features.Perfil;
 using MiTurno.Application.Features.Public;
 using MiTurno.Application.Features.Reservas;
 using MiTurno.Application.Features.Suscripciones;
@@ -44,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<EliminarBloqueoFechaUseCase>();
 
         services.AddScoped<ObtenerNegocioPublicoUseCase>();
+        services.AddScoped<ListarPlanesPublicosUseCase>();
         services.AddScoped<ListarTurnosDisponiblesUseCase>();
         services.AddScoped<CrearReservaUseCase>();
         services.AddScoped<ConfirmarPagoUseCase>();
@@ -63,6 +65,10 @@ public static class DependencyInjection
 
         services.AddScoped<ObtenerEstadisticasOcupacionUseCase>();
 
+        services.AddScoped<ObtenerMiPerfilUseCase>();
+        services.AddScoped<ActualizarMiPerfilUseCase>();
+        services.AddScoped<CambiarMiPasswordUseCase>();
+
         services.AddScoped<CrearPlanUseCase>();
         services.AddScoped<ActualizarPlanUseCase>();
         services.AddScoped<ListarPlanesUseCase>();
@@ -75,6 +81,8 @@ public static class DependencyInjection
         services.AddScoped<CancelarSuscripcionUseCase>();
 
         services.AddScoped<ObtenerMiSuscripcionUseCase>();
+        services.AddScoped<CambiarPlanMiSuscripcionUseCase>();
+        services.AddScoped<CancelarMiSuscripcionUseCase>();
         services.AddScoped<GenerarPagoSuscripcionUseCase>();
         services.AddScoped<ProcesarNotificacionPagoSuscripcionUseCase>();
         services.AddScoped<NotificarSuscripcionesPorVencerUseCase>();

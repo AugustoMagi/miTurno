@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { LandingPage } from './pages/LandingPage'
 import { NegocioPage } from './pages/NegocioPage'
 import { ReservaWizardPage } from './pages/ReservaWizardPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -15,6 +16,7 @@ import { ClienteDetailPage } from './pages/panel/ClienteDetailPage'
 import { ConfiguracionPagoPage } from './pages/panel/ConfiguracionPagoPage'
 import { EstadisticasPage } from './pages/panel/EstadisticasPage'
 import { MiSuscripcionPage } from './pages/panel/MiSuscripcionPage'
+import { PerfilPage } from './pages/panel/PerfilPage'
 import { RequireAdminAuth } from './components/RequireAdminAuth'
 import { AdminLayout } from './components/AdminLayout'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
@@ -46,17 +48,11 @@ function App() {
           <Route path="clientes/:id" element={<ClienteDetailPage />} />
           <Route path="configuracion-pago" element={<ConfiguracionPagoPage />} />
           <Route path="suscripcion" element={<MiSuscripcionPage />} />
+          <Route path="perfil" element={<PerfilPage />} />
         </Route>
       </Route>
 
-      <Route
-        path="/"
-        element={
-          <Layout>
-            <NotFoundPage />
-          </Layout>
-        }
-      />
+      <Route path="/" element={<LandingPage />} />
       <Route
         path="/:slug"
         element={

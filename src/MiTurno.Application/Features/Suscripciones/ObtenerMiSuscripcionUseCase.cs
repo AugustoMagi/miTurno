@@ -20,8 +20,6 @@ public class ObtenerMiSuscripcionUseCase
         if (suscripcion is null)
             return Result.Failure<MiSuscripcionResponse>("Todavía no tenés una suscripción asignada.");
 
-        return Result.Success(new MiSuscripcionResponse(
-            suscripcion.Id, suscripcion.Plan.Nombre, suscripcion.Plan.Precio, suscripcion.Plan.Periodicidad,
-            suscripcion.Estado, suscripcion.FechaProximoVencimiento, suscripcion.EstaActiva));
+        return Result.Success(suscripcion.ToMiSuscripcionResponse());
     }
 }

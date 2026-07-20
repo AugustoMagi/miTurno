@@ -5,19 +5,20 @@ using MiTurno.Domain.Enums;
 
 namespace MiTurno.Application.Tests.Features.Suscripciones;
 
-public class ObtenerMiSuscripcionUseCaseTests
+public class CancelarMiSuscripcionUseCaseTests
 {
     private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
-    private readonly ObtenerMiSuscripcionUseCase _useCase;
+    private readonly CancelarMiSuscripcionUseCase _useCase;
 
-    public ObtenerMiSuscripcionUseCaseTests()
+    public CancelarMiSuscripcionUseCaseTests()
     {
-        _useCase = new ObtenerMiSuscripcionUseCase(_suscripcionRepository);
+        _useCase = new CancelarMiSuscripcionUseCase(_suscripcionRepository, _unitOfWork);
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConSuscripcionAsignada_DevuelveSusDatos()
+    public async Task ExecuteAsync_ConSuscripcionAsignada_LaCancela()
     {
         var negocioId = Guid.NewGuid();
         var plan = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
@@ -27,10 +28,8 @@ public class ObtenerMiSuscripcionUseCaseTests
         var result = await _useCase.ExecuteAsync(negocioId);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.PlanId.Should().Be(plan.Id);
-        result.Value.PlanNombre.Should().Be("Básico");
-        result.Value.Estado.Should().Be(EstadoSuscripcion.EnPrueba);
-        result.Value.EstaActiva.Should().BeTrue();
+        suscripcion.Estado.Should().Be(EstadoSuscripcion.Cancelada);
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -42,5 +41,6 @@ public class ObtenerMiSuscripcionUseCaseTests
         var result = await _useCase.ExecuteAsync(negocioId);
 
         result.IsFailure.Should().BeTrue();
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

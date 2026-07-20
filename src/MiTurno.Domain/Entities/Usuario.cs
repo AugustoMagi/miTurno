@@ -35,6 +35,18 @@ public class Usuario : BaseEntity
         };
     }
 
+    public void ActualizarDatos(string nombre, string email)
+    {
+        if (string.IsNullOrWhiteSpace(nombre))
+            throw new DomainException("El nombre del usuario es obligatorio.");
+        if (string.IsNullOrWhiteSpace(email))
+            throw new DomainException("El email del usuario es obligatorio.");
+
+        Nombre = nombre;
+        Email = email.ToLowerInvariant();
+        MarcarActualizado();
+    }
+
     public void CambiarPassword(string nuevoPasswordHash)
     {
         if (string.IsNullOrWhiteSpace(nuevoPasswordHash))
