@@ -44,10 +44,13 @@ public class Suscripcion : BaseEntity
         Estado is EstadoSuscripcion.Activa or EstadoSuscripcion.EnPrueba
         && FechaProximoVencimiento >= DateTime.UtcNow;
 
+    /// <summary>
+    /// Renueva manualmente el vencimiento y deja la suscripción en Activa, sea cual sea su estado
+    /// anterior — incluida Cancelada: es también el mecanismo por el que un SysAdmin reactiva una
+    /// suscripción cancelada por error o a pedido del negocio, sin necesitar una acción separada.
+    /// </summary>
     public void Renovar(DateTime nuevoVencimiento)
     {
-        if (Estado == EstadoSuscripcion.Cancelada)
-            throw new DomainException("No se puede renovar una suscripción cancelada.");
         if (nuevoVencimiento <= FechaProximoVencimiento)
             throw new DomainException("La nueva fecha de vencimiento debe ser posterior a la actual.");
 

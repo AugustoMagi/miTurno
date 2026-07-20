@@ -3,12 +3,14 @@ using MiTurno.Application.Common.Models;
 using MiTurno.Application.Features.Public.Dtos;
 using MiTurno.Domain.Exceptions;
 
-namespace MiTurno.Application.Features.Public;
+namespace MiTurno.Application.Features.Reservas;
 
 /// <summary>
-/// Acredita el pago de una reserva y la confirma automáticamente. Es el paso que, en producción,
-/// dispara la pasarela de pago (Mercado Pago, Stripe) mediante un webhook una vez acreditado el
-/// cobro; hasta integrar un proveedor real, este endpoint cumple ese rol.
+/// Acredita el pago de una reserva y la confirma automáticamente. Es la confirmación manual que
+/// usa el dueño del negocio para transferencias/alias (sin pasarela integrada); los pagos con
+/// Mercado Pago se confirman solos vía <see cref="Public.ProcesarNotificacionPagoMercadoPagoUseCase"/>.
+/// Requiere autenticación (rol Owner/Empleado) porque marca dinero como cobrado: expuesto sin
+/// autenticación, cualquiera con el id de su propia reserva podría auto-confirmarla sin pagar.
 /// </summary>
 public class ConfirmarPagoUseCase
 {
@@ -36,18 +38,14 @@ public class ConfirmarPagoUseCase
     }
 
     public async Task<Result<ReservaResponse>> ExecuteAsync(
-        string slug, Guid reservaId, CancellationToken cancellationToken = default)
+        Guid negocioId, Guid reservaId, CancellationToken cancellationToken = default)
     {
-        var negocio = await _negocioRepository.GetBySlugAsync(slug, cancellationToken);
-        if (negocio is null || !negocio.Activo)
-            return Result.Failure<ReservaResponse>("Negocio no encontrado.");
-
         var reserva = await _reservaRepository.GetByIdAsync(reservaId, cancellationToken);
         if (reserva is null)
             return Result.Failure<ReservaResponse>("Reserva no encontrada.");
 
         var recurso = await _recursoRepository.GetByIdAsync(reserva.RecursoId, cancellationToken);
-        if (recurso is null || recurso.NegocioId != negocio.Id)
+        if (recurso is null || recurso.NegocioId != negocioId)
             return Result.Failure<ReservaResponse>("Reserva no encontrada.");
 
         if (reserva.Pago is null)
@@ -61,10 +59,11 @@ public class ConfirmarPagoUseCase
             _reservaRepository.Update(reserva);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+            var negocio = await _negocioRepository.GetByIdAsync(negocioId, cancellationToken);
             var cliente = await _clienteRepository.GetByIdAsync(reserva.ClienteId, cancellationToken);
             await _emailNotificador.NotificarReservaConfirmadaAsync(
                 new NotificacionReserva(
-                    cliente!.Email, cliente.Nombre, negocio.Nombre, recurso.Nombre,
+                    cliente!.Email, cliente.Nombre, negocio!.Nombre, recurso.Nombre,
                     reserva.Fecha, reserva.HoraInicio, reserva.HoraFin),
                 cancellationToken);
             await _emailNotificador.NotificarNuevaReservaAlDuenioAsync(

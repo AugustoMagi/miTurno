@@ -52,6 +52,23 @@ public class RenovarSuscripcionManualUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ConSuscripcionCancelada_LaReactivaEnVezDeFallar()
+    {
+        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        var plan = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
+        var suscripcion = Suscripcion.IniciarPrueba(negocio.Id, plan);
+        suscripcion.Cancelar();
+        _suscripcionRepository.GetByIdAsync(suscripcion.Id).Returns(suscripcion);
+        _negocioRepository.GetByIdAsync(negocio.Id).Returns(negocio);
+
+        var nuevoVencimiento = suscripcion.FechaProximoVencimiento.AddMonths(1);
+        var result = await _useCase.ExecuteAsync(suscripcion.Id, new RenovarSuscripcionManualRequest(nuevoVencimiento));
+
+        result.IsSuccess.Should().BeTrue();
+        suscripcion.Estado.Should().Be(EstadoSuscripcion.Activa);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ConSuscripcionInexistente_DevuelveFailure()
     {
         _suscripcionRepository.GetByIdAsync(Arg.Any<Guid>()).Returns((Suscripcion?)null);

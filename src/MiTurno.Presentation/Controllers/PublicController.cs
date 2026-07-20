@@ -12,8 +12,6 @@ public class PublicController : ControllerBase
     private readonly ObtenerNegocioPublicoUseCase _obtenerNegocioPublicoUseCase;
     private readonly ListarTurnosDisponiblesUseCase _listarTurnosDisponiblesUseCase;
     private readonly CrearReservaUseCase _crearReservaUseCase;
-    private readonly ConfirmarPagoUseCase _confirmarPagoUseCase;
-    private readonly RechazarPagoUseCase _rechazarPagoUseCase;
     private readonly CancelarReservaClienteUseCase _cancelarReservaClienteUseCase;
     private readonly ProcesarNotificacionPagoMercadoPagoUseCase _procesarNotificacionPagoMercadoPagoUseCase;
 
@@ -21,16 +19,12 @@ public class PublicController : ControllerBase
         ObtenerNegocioPublicoUseCase obtenerNegocioPublicoUseCase,
         ListarTurnosDisponiblesUseCase listarTurnosDisponiblesUseCase,
         CrearReservaUseCase crearReservaUseCase,
-        ConfirmarPagoUseCase confirmarPagoUseCase,
-        RechazarPagoUseCase rechazarPagoUseCase,
         CancelarReservaClienteUseCase cancelarReservaClienteUseCase,
         ProcesarNotificacionPagoMercadoPagoUseCase procesarNotificacionPagoMercadoPagoUseCase)
     {
         _obtenerNegocioPublicoUseCase = obtenerNegocioPublicoUseCase;
         _listarTurnosDisponiblesUseCase = listarTurnosDisponiblesUseCase;
         _crearReservaUseCase = crearReservaUseCase;
-        _confirmarPagoUseCase = confirmarPagoUseCase;
-        _rechazarPagoUseCase = rechazarPagoUseCase;
         _cancelarReservaClienteUseCase = cancelarReservaClienteUseCase;
         _procesarNotificacionPagoMercadoPagoUseCase = procesarNotificacionPagoMercadoPagoUseCase;
     }
@@ -56,20 +50,6 @@ public class PublicController : ControllerBase
     {
         var webhookBaseUrl = $"{Request.Scheme}://{Request.Host}";
         var result = await _crearReservaUseCase.ExecuteAsync(slug, recursoId, request, webhookBaseUrl, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
-    }
-
-    [HttpPatch("{slug}/reservas/{reservaId:guid}/pago/confirmar")]
-    public async Task<IActionResult> ConfirmarPago(string slug, Guid reservaId, CancellationToken cancellationToken)
-    {
-        var result = await _confirmarPagoUseCase.ExecuteAsync(slug, reservaId, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
-    }
-
-    [HttpPatch("{slug}/reservas/{reservaId:guid}/pago/rechazar")]
-    public async Task<IActionResult> RechazarPago(string slug, Guid reservaId, CancellationToken cancellationToken)
-    {
-        var result = await _rechazarPagoUseCase.ExecuteAsync(slug, reservaId, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
     }
 

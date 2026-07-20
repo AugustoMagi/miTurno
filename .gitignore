@@ -7,8 +7,9 @@
 bin/
 obj/
 
-# Node.js (si usás frontend)
+# Node.js (frontend)
 node_modules/
+frontend/dist/
 
 # Variables de entorno
 .env

@@ -48,13 +48,13 @@ public static class DependencyInjection
         services.AddScoped<ListarPlanesPublicosUseCase>();
         services.AddScoped<ListarTurnosDisponiblesUseCase>();
         services.AddScoped<CrearReservaUseCase>();
-        services.AddScoped<ConfirmarPagoUseCase>();
-        services.AddScoped<RechazarPagoUseCase>();
         services.AddScoped<CancelarReservaClienteUseCase>();
         services.AddScoped<ProcesarNotificacionPagoMercadoPagoUseCase>();
 
         services.AddScoped<ListarReservasUseCase>();
         services.AddScoped<CancelarReservaUseCase>();
+        services.AddScoped<ConfirmarPagoUseCase>();
+        services.AddScoped<RechazarPagoUseCase>();
 
         services.AddScoped<ListarClientesUseCase>();
         services.AddScoped<ObtenerHistorialClienteUseCase>();

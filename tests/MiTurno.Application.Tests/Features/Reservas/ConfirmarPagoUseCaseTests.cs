@@ -1,10 +1,10 @@
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
-using MiTurno.Application.Features.Public;
+using MiTurno.Application.Features.Reservas;
 using MiTurno.Domain.Entities;
 using MiTurno.Domain.Enums;
 
-namespace MiTurno.Application.Tests.Features.Public;
+namespace MiTurno.Application.Tests.Features.Reservas;
 
 public class ConfirmarPagoUseCaseTests
 {
@@ -34,7 +34,7 @@ public class ConfirmarPagoUseCaseTests
             TimeSpan.FromHours(18), TimeSpan.FromHours(19), 5000m);
         reserva.AsignarPago(Pago.Registrar(reserva.Id, 5000m));
 
-        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
+        _negocioRepository.GetByIdAsync(negocio.Id).Returns(negocio);
         _reservaRepository.GetByIdAsync(reserva.Id).Returns(reserva);
         _recursoRepository.GetByIdAsync(recurso.Id).Returns(recurso);
         _clienteRepository.GetByIdAsync(cliente.Id).Returns(cliente);
@@ -47,7 +47,7 @@ public class ConfirmarPagoUseCaseTests
     {
         var (negocio, _, reserva, cliente) = EscenarioValido();
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, reserva.Id);
+        var result = await _useCase.ExecuteAsync(negocio.Id, reserva.Id);
 
         result.IsSuccess.Should().BeTrue();
         reserva.Pago!.Estado.Should().Be(EstadoPago.Aprobado);
@@ -60,27 +60,16 @@ public class ConfirmarPagoUseCaseTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConNegocioInexistente_DevuelveFailure()
+    public async Task ExecuteAsync_ConReservaInexistente_DevuelveFailureSinTocarOtrosRepositorios()
     {
-        _negocioRepository.GetBySlugAsync("no-existe").Returns((Negocio?)null);
+        var reservaId = Guid.NewGuid();
+        _reservaRepository.GetByIdAsync(reservaId).Returns((Reserva?)null);
 
-        var result = await _useCase.ExecuteAsync("no-existe", Guid.NewGuid());
+        var result = await _useCase.ExecuteAsync(Guid.NewGuid(), reservaId);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be("Negocio no encontrado.");
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_ConNegocioDesactivado_DevuelveFailure()
-    {
-        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
-        negocio.Desactivar();
-        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
-
-        var result = await _useCase.ExecuteAsync(negocio.Slug, Guid.NewGuid());
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be("Negocio no encontrado.");
+        result.Error.Should().Be("Reserva no encontrada.");
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -92,11 +81,10 @@ public class ConfirmarPagoUseCaseTests
             recurso.Id, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
             TimeSpan.FromHours(18), TimeSpan.FromHours(19), 5000m);
 
-        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
         _reservaRepository.GetByIdAsync(reserva.Id).Returns(reserva);
         _recursoRepository.GetByIdAsync(recurso.Id).Returns(recurso);
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, reserva.Id);
+        var result = await _useCase.ExecuteAsync(negocio.Id, reserva.Id);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("La reserva no tiene un pago asociado.");
@@ -105,18 +93,17 @@ public class ConfirmarPagoUseCaseTests
     [Fact]
     public async Task ExecuteAsync_ConRecursoDeOtroNegocio_DevuelveFailureComoSiNoExistiera()
     {
-        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        var negocioDueno = Guid.NewGuid();
         var otroNegocio = Negocio.Crear("Otro", "otro-negocio", "otro@test.com");
         var recurso = Recurso.Crear(otroNegocio.Id, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
         var reserva = Reserva.Crear(
             recurso.Id, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.Today.AddDays(1)),
             TimeSpan.FromHours(18), TimeSpan.FromHours(19), 5000m);
 
-        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
         _reservaRepository.GetByIdAsync(reserva.Id).Returns(reserva);
         _recursoRepository.GetByIdAsync(recurso.Id).Returns(recurso);
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, reserva.Id);
+        var result = await _useCase.ExecuteAsync(negocioDueno, reserva.Id);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Reserva no encontrada.");
@@ -128,7 +115,7 @@ public class ConfirmarPagoUseCaseTests
         var (negocio, _, reserva, _) = EscenarioValido();
         reserva.Pago!.Aprobar();
 
-        var result = await _useCase.ExecuteAsync(negocio.Slug, reserva.Id);
+        var result = await _useCase.ExecuteAsync(negocio.Id, reserva.Id);
 
         result.IsFailure.Should().BeTrue();
         await _emailNotificador.DidNotReceive().NotificarReservaConfirmadaAsync(

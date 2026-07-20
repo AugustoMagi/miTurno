@@ -1,6 +1,7 @@
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
 using MiTurno.Application.Features.Public;
+using MiTurno.Application.Features.Reservas;
 using MiTurno.Domain.Entities;
 using MiTurno.Domain.Enums;
 
@@ -46,6 +47,7 @@ public class ProcesarNotificacionPagoMercadoPagoUseCaseTests
         var configuracionPago = ConfiguracionPago.Conectar(negocio.Id, ProveedorPago.MercadoPago, "alias.mp", "ACCESS-TOKEN");
 
         _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
+        _negocioRepository.GetByIdAsync(negocio.Id).Returns(negocio);
         _reservaRepository.GetByIdAsync(reserva.Id).Returns(reserva);
         _recursoRepository.GetByIdAsync(recurso.Id).Returns(recurso);
         _clienteRepository.GetByIdAsync(cliente.Id).Returns(cliente);

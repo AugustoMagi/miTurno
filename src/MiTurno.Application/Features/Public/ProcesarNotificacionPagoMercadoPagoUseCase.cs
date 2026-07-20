@@ -1,5 +1,6 @@
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
+using MiTurno.Application.Features.Reservas;
 using MiTurno.Domain.Enums;
 
 namespace MiTurno.Application.Features.Public;
@@ -67,8 +68,8 @@ public class ProcesarNotificacionPagoMercadoPagoUseCase
 
         return estado.Estado switch
         {
-            EstadoPagoExterno.Aprobado => AResult(await _confirmarPagoUseCase.ExecuteAsync(slug, reservaId, cancellationToken)),
-            EstadoPagoExterno.Rechazado => AResult(await _rechazarPagoUseCase.ExecuteAsync(slug, reservaId, cancellationToken)),
+            EstadoPagoExterno.Aprobado => AResult(await _confirmarPagoUseCase.ExecuteAsync(negocio.Id, reservaId, cancellationToken)),
+            EstadoPagoExterno.Rechazado => AResult(await _rechazarPagoUseCase.ExecuteAsync(negocio.Id, reservaId, cancellationToken)),
             _ => Result.Success() // pending/in_process/etc.: esperar la próxima notificación
         };
     }
