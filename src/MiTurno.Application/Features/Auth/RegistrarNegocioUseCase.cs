@@ -81,7 +81,8 @@ public class RegistrarNegocioUseCase
 
             var token = _jwtTokenGenerator.GenerarToken(usuario);
 
-            return Result.Success(new RegistrarNegocioResponse(negocio.Id, negocio.Slug, usuario.Id, token));
+            return Result.Success(new RegistrarNegocioResponse(
+                usuario.Id, negocio.Id, negocio.Slug, usuario.Nombre, usuario.Email, usuario.Rol.ToString(), token));
         }
         catch (DomainException ex)
         {
