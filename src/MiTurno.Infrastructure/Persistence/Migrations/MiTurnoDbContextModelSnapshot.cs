@@ -92,6 +92,9 @@ namespace MiTurno.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<DateTime?>("AccessTokenExpiraEn")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
 
@@ -111,6 +114,10 @@ namespace MiTurno.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Proveedor")
                         .HasColumnType("int");
+
+                    b.Property<string>("RefreshToken")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
 
@@ -408,6 +415,10 @@ namespace MiTurno.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("FechaProximoVencimiento")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("MercadoPagoPreapprovalId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<Guid>("NegocioId")
                         .HasColumnType("uniqueidentifier");

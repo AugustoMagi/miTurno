@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react'
-import { actualizarPlan, crearPlan, desactivarPlan, listarPlanes, marcarPlanDePrueba } from '../../api/planes'
+import {
+  actualizarPlan,
+  crearPlan,
+  desactivarPlan,
+  desmarcarPlanDePrueba,
+  eliminarPlan,
+  listarPlanes,
+  marcarPlanDePrueba,
+} from '../../api/planes'
 import { extractError } from '../../api/client'
 import { Periodicidad } from '../../types/plan'
 import type { Plan, PlanInput } from '../../types/plan'
@@ -7,6 +15,8 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { FieldError } from '../../components/FieldError'
+import { validarEntero, validarNumeroNoNegativo, validarRequerido } from '../../utils/validation'
 
 const PERIODICIDAD_LABEL: Record<Periodicidad, string> = {
   [Periodicidad.Mensual]: 'Mensual',
@@ -30,6 +40,7 @@ export function PlanesPage() {
   const [form, setForm] = useState<PlanInput>(FORM_VACIO)
   const [guardando, setGuardando] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [tocado, setTocado] = useState<Record<string, boolean>>({})
 
   const [procesando, setProcesando] = useState<string | null>(null)
 
@@ -45,6 +56,7 @@ export function PlanesPage() {
   function abrirNuevo() {
     setEditandoId(null)
     setForm(FORM_VACIO)
+    setTocado({})
     setMostrarForm(true)
   }
 
@@ -57,11 +69,19 @@ export function PlanesPage() {
       limiteRecursos: plan.limiteRecursos,
       limiteReservasPorMes: plan.limiteReservasPorMes,
     })
+    setTocado({})
     setMostrarForm(true)
   }
 
+  const errorNombre = validarRequerido(form.nombre, 'El nombre')
+  const errorPrecio = validarNumeroNoNegativo(form.precio, 'El precio')
+  const errorLimiteRecursos = validarEntero(form.limiteRecursos, 'El límite de recursos', 1)
+  const errorLimiteReservas = validarEntero(form.limiteReservasPorMes, 'El límite de reservas por mes', 1)
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    setTocado({ nombre: true, precio: true, limiteRecursos: true, limiteReservasPorMes: true })
+    if (errorNombre || errorPrecio || errorLimiteRecursos || errorLimiteReservas) return
     setGuardando(true)
     setFormError(null)
     try {
@@ -102,6 +122,33 @@ export function PlanesPage() {
     }
   }
 
+  async function handleDesmarcarDePrueba(id: string) {
+    setProcesando(id)
+    setError(null)
+    try {
+      await desmarcarPlanDePrueba(id)
+      cargar()
+    } catch (err) {
+      setError(extractError(err))
+    } finally {
+      setProcesando(null)
+    }
+  }
+
+  async function handleEliminar(id: string, nombre: string) {
+    if (!window.confirm(`¿Eliminar el plan "${nombre}"? Esta acción no se puede deshacer.`)) return
+    setProcesando(id)
+    setError(null)
+    try {
+      await eliminarPlan(id)
+      cargar()
+    } catch (err) {
+      setError(extractError(err))
+    } finally {
+      setProcesando(null)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -125,7 +172,9 @@ export function PlanesPage() {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={form.nombre}
                   onChange={(event) => setForm({ ...form, nombre: event.target.value })}
+                  onBlur={() => setTocado((t) => ({ ...t, nombre: true }))}
                 />
+                {tocado.nombre && <FieldError message={errorNombre} />}
               </label>
               <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
                 Precio
@@ -137,7 +186,9 @@ export function PlanesPage() {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={form.precio}
                   onChange={(event) => setForm({ ...form, precio: Number(event.target.value) })}
+                  onBlur={() => setTocado((t) => ({ ...t, precio: true }))}
                 />
+                {tocado.precio && <FieldError message={errorPrecio} />}
               </label>
               <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
                 Periodicidad
@@ -160,7 +211,9 @@ export function PlanesPage() {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={form.limiteRecursos}
                   onChange={(event) => setForm({ ...form, limiteRecursos: Number(event.target.value) })}
+                  onBlur={() => setTocado((t) => ({ ...t, limiteRecursos: true }))}
                 />
+                {tocado.limiteRecursos && <FieldError message={errorLimiteRecursos} />}
               </label>
               <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
                 Límite de reservas por mes
@@ -171,7 +224,9 @@ export function PlanesPage() {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={form.limiteReservasPorMes}
                   onChange={(event) => setForm({ ...form, limiteReservasPorMes: Number(event.target.value) })}
+                  onBlur={() => setTocado((t) => ({ ...t, limiteReservasPorMes: true }))}
                 />
+                {tocado.limiteReservasPorMes && <FieldError message={errorLimiteReservas} />}
               </label>
             </div>
             {formError && <ErrorBanner message={formError} />}
@@ -217,7 +272,15 @@ export function PlanesPage() {
                 <Button variant="secondary" onClick={() => abrirEdicion(plan)}>
                   Editar
                 </Button>
-                {!plan.esPlanDePrueba && (
+                {plan.esPlanDePrueba ? (
+                  <Button
+                    variant="secondary"
+                    disabled={procesando === plan.id}
+                    onClick={() => handleDesmarcarDePrueba(plan.id)}
+                  >
+                    Desmarcar de prueba
+                  </Button>
+                ) : (
                   <Button
                     variant="secondary"
                     disabled={procesando === plan.id}
@@ -235,6 +298,14 @@ export function PlanesPage() {
                     Desactivar
                   </Button>
                 )}
+                <button
+                  type="button"
+                  disabled={procesando === plan.id}
+                  onClick={() => handleEliminar(plan.id, plan.nombre)}
+                  className="rounded-lg border border-red-300 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Eliminar
+                </button>
               </div>
             </Card>
           ))}

@@ -7,6 +7,8 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { FieldError } from '../../components/FieldError'
+import { validarEntero, validarNumeroNoNegativo, validarRequerido } from '../../utils/validation'
 
 export function RecursosListPage() {
   const [recursos, setRecursos] = useState<Recurso[] | null>(null)
@@ -19,6 +21,7 @@ export function RecursosListPage() {
   const [precio, setPrecio] = useState(0)
   const [creando, setCreando] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [tocado, setTocado] = useState<Record<string, boolean>>({})
 
   const [cambiandoEstado, setCambiandoEstado] = useState<string | null>(null)
 
@@ -31,8 +34,15 @@ export function RecursosListPage() {
 
   useEffect(cargar, [])
 
+  const errorNombre = validarRequerido(nombre, 'El nombre')
+  const errorTipo = validarRequerido(tipo, 'El tipo')
+  const errorDuracion = validarEntero(duracionTurnoMinutos, 'La duración del turno', 1)
+  const errorPrecio = validarNumeroNoNegativo(precio, 'El precio')
+
   async function handleCrear(event: React.FormEvent) {
     event.preventDefault()
+    setTocado({ nombre: true, tipo: true, duracion: true, precio: true })
+    if (errorNombre || errorTipo || errorDuracion || errorPrecio) return
     setCreando(true)
     setFormError(null)
     try {
@@ -85,7 +95,9 @@ export function RecursosListPage() {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={nombre}
                   onChange={(event) => setNombre(event.target.value)}
+                  onBlur={() => setTocado((t) => ({ ...t, nombre: true }))}
                 />
+                {tocado.nombre && <FieldError message={errorNombre} />}
               </label>
               <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
                 Tipo
@@ -96,7 +108,9 @@ export function RecursosListPage() {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={tipo}
                   onChange={(event) => setTipo(event.target.value)}
+                  onBlur={() => setTocado((t) => ({ ...t, tipo: true }))}
                 />
+                {tocado.tipo && <FieldError message={errorTipo} />}
               </label>
               <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
                 Duración del turno (min)
@@ -107,7 +121,9 @@ export function RecursosListPage() {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={duracionTurnoMinutos}
                   onChange={(event) => setDuracionTurnoMinutos(Number(event.target.value))}
+                  onBlur={() => setTocado((t) => ({ ...t, duracion: true }))}
                 />
+                {tocado.duracion && <FieldError message={errorDuracion} />}
               </label>
               <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
                 Precio
@@ -119,7 +135,9 @@ export function RecursosListPage() {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={precio}
                   onChange={(event) => setPrecio(Number(event.target.value))}
+                  onBlur={() => setTocado((t) => ({ ...t, precio: true }))}
                 />
+                {tocado.precio && <FieldError message={errorPrecio} />}
               </label>
             </div>
             {formError && <ErrorBanner message={formError} />}

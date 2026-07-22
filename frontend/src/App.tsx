@@ -8,6 +8,9 @@ import { RequireAuth } from './components/RequireAuth'
 import { PanelLayout } from './components/PanelLayout'
 import { LoginPage } from './pages/panel/LoginPage'
 import { RegisterPage } from './pages/panel/RegisterPage'
+import { OlvidePasswordPage } from './pages/panel/OlvidePasswordPage'
+import { RestablecerPasswordPage } from './pages/panel/RestablecerPasswordPage'
+import { MiNegocioPage } from './pages/panel/MiNegocioPage'
 import { RecursosListPage } from './pages/panel/RecursosListPage'
 import { RecursoDetailPage } from './pages/panel/RecursoDetailPage'
 import { ReservasListPage } from './pages/panel/ReservasListPage'
@@ -22,6 +25,9 @@ import { AdminLayout } from './components/AdminLayout'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { PlanesPage } from './pages/admin/PlanesPage'
 import { SuscripcionesPage } from './pages/admin/SuscripcionesPage'
+import { FacturacionPage } from './pages/admin/FacturacionPage'
+import { NegociosPage } from './pages/admin/NegociosPage'
+import { NegocioDetailPage } from './pages/admin/NegocioDetailPage'
 
 function App() {
   return (
@@ -32,11 +38,16 @@ function App() {
           <Route index element={<Navigate to="/admin/planes" replace />} />
           <Route path="planes" element={<PlanesPage />} />
           <Route path="suscripciones" element={<SuscripcionesPage />} />
+          <Route path="facturacion" element={<FacturacionPage />} />
+          <Route path="negocios" element={<NegociosPage />} />
+          <Route path="negocios/:id" element={<NegocioDetailPage />} />
         </Route>
       </Route>
 
       <Route path="/panel/login" element={<LoginPage />} />
       <Route path="/panel/registro" element={<RegisterPage />} />
+      <Route path="/panel/olvide-password" element={<OlvidePasswordPage />} />
+      <Route path="/panel/restablecer-password" element={<RestablecerPasswordPage />} />
       <Route path="/panel" element={<RequireAuth />}>
         <Route element={<PanelLayout />}>
           <Route index element={<Navigate to="/panel/estadisticas" replace />} />
@@ -48,6 +59,7 @@ function App() {
           <Route path="clientes/:id" element={<ClienteDetailPage />} />
           <Route path="configuracion-pago" element={<ConfiguracionPagoPage />} />
           <Route path="suscripcion" element={<MiSuscripcionPage />} />
+          <Route path="negocio" element={<MiNegocioPage />} />
           <Route path="perfil" element={<PerfilPage />} />
         </Route>
       </Route>

@@ -10,13 +10,16 @@ public class CambiarPlanMiSuscripcionUseCaseTests
 {
     private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
     private readonly IPlanRepository _planRepository = Substitute.For<IPlanRepository>();
+    private readonly IPlataformaPagoConfiguracion _plataformaPagoConfiguracion = Substitute.For<IPlataformaPagoConfiguracion>();
+    private readonly IPagoRecurrenteGateway _pagoRecurrenteGateway = Substitute.For<IPagoRecurrenteGateway>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     private readonly CambiarPlanMiSuscripcionUseCase _useCase;
 
     public CambiarPlanMiSuscripcionUseCaseTests()
     {
-        _useCase = new CambiarPlanMiSuscripcionUseCase(_suscripcionRepository, _planRepository, _unitOfWork);
+        _useCase = new CambiarPlanMiSuscripcionUseCase(
+            _suscripcionRepository, _planRepository, _plataformaPagoConfiguracion, _pagoRecurrenteGateway, _unitOfWork);
     }
 
     [Fact]
@@ -78,5 +81,24 @@ public class CambiarPlanMiSuscripcionUseCaseTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Plan no encontrado.");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConCobroAutomaticoActivo_ActualizaElMontoEnMercadoPago()
+    {
+        var negocioId = Guid.NewGuid();
+        var planViejo = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
+        var planNuevo = Plan.Crear("Premium", 10000m, Periodicidad.Mensual, 10, 1000);
+        var suscripcion = Suscripcion.IniciarPrueba(negocioId, planViejo);
+        suscripcion.AsignarPreapproval("preapproval-1");
+        _suscripcionRepository.GetByNegocioIdAsync(negocioId).Returns(suscripcion);
+        _planRepository.GetByIdAsync(planNuevo.Id).Returns(planNuevo);
+        _plataformaPagoConfiguracion.AccessToken.Returns("PLATAFORMA-TOKEN");
+
+        var result = await _useCase.ExecuteAsync(negocioId, new CambiarPlanMiSuscripcionRequest(planNuevo.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        await _pagoRecurrenteGateway.Received(1).ActualizarMontoPreapprovalAsync(
+            "PLATAFORMA-TOKEN", "preapproval-1", 10000m, Arg.Any<CancellationToken>());
     }
 }

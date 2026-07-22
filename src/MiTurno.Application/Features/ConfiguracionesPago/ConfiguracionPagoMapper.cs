@@ -10,6 +10,7 @@ internal static class ConfiguracionPagoMapper
         configuracion.Proveedor,
         configuracion.Alias,
         configuracion.AccessToken is not null,
+        configuracion.RefreshToken is not null,
         configuracion.Activo,
         configuracion.FechaCreacion);
 }

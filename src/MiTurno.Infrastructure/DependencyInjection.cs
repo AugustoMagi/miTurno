@@ -47,9 +47,21 @@ public static class DependencyInjection
         services.Configure<MercadoPagoPlataformaSettings>(configuration.GetSection(MercadoPagoPlataformaSettings.SectionName));
         services.AddScoped<IPlataformaPagoConfiguracion, PlataformaPagoConfiguracion>();
 
+        services.AddHttpClient<IPagoRecurrenteGateway, MercadoPagoRecurrenteGateway>();
+
+        services.AddHttpClient<IMercadoPagoOAuthGateway, MercadoPagoOAuthGateway>();
+        services.Configure<MercadoPagoOAuthSettings>(configuration.GetSection(MercadoPagoOAuthSettings.SectionName));
+        services.AddScoped<IMercadoPagoOAuthConfiguracion, MercadoPagoOAuthConfiguracion>();
+        services.AddScoped<IEstadoOAuthProtector, EstadoOAuthProtector>();
+
+        services.Configure<FrontendSettings>(configuration.GetSection(FrontendSettings.SectionName));
+        services.AddScoped<IFrontendConfiguracion, FrontendConfiguracion>();
+        services.AddScoped<IPasswordResetTokenProtector, PasswordResetTokenProtector>();
+
         services.AddDataProtection();
 
         services.AddHostedService<SuscripcionVencimientoBackgroundService>();
+        services.AddHostedService<MercadoPagoTokenRenovacionBackgroundService>();
 
         return services;
     }

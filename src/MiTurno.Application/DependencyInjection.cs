@@ -2,12 +2,15 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Admin.Auth;
+using MiTurno.Application.Features.Admin.Facturacion;
+using MiTurno.Application.Features.Admin.Negocios;
 using MiTurno.Application.Features.Admin.Planes;
 using MiTurno.Application.Features.Admin.Suscripciones;
 using MiTurno.Application.Features.Auth;
 using MiTurno.Application.Features.Clientes;
 using MiTurno.Application.Features.ConfiguracionesPago;
 using MiTurno.Application.Features.Estadisticas;
+using MiTurno.Application.Features.Negocios;
 using MiTurno.Application.Features.Recursos;
 using MiTurno.Application.Features.Recursos.Bloqueos;
 using MiTurno.Application.Features.Recursos.Horarios;
@@ -29,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<RegistrarNegocioUseCase>();
         services.AddScoped<LoginUseCase>();
         services.AddScoped<LoginSysAdminUseCase>();
+        services.AddScoped<SolicitarReseteoPasswordUseCase>();
+        services.AddScoped<RestablecerPasswordUseCase>();
 
         services.AddScoped<CrearRecursoUseCase>();
         services.AddScoped<ListarRecursosUseCase>();
@@ -62,6 +67,9 @@ public static class DependencyInjection
         services.AddScoped<ConectarConfiguracionPagoUseCase>();
         services.AddScoped<ObtenerConfiguracionPagoUseCase>();
         services.AddScoped<DesconectarConfiguracionPagoUseCase>();
+        services.AddScoped<IniciarConexionMercadoPagoUseCase>();
+        services.AddScoped<ProcesarCallbackMercadoPagoUseCase>();
+        services.AddScoped<RenovarConexionesMercadoPagoUseCase>();
 
         services.AddScoped<ObtenerEstadisticasOcupacionUseCase>();
 
@@ -69,22 +77,33 @@ public static class DependencyInjection
         services.AddScoped<ActualizarMiPerfilUseCase>();
         services.AddScoped<CambiarMiPasswordUseCase>();
 
+        services.AddScoped<ObtenerMiNegocioUseCase>();
+        services.AddScoped<ActualizarMiNegocioUseCase>();
+
         services.AddScoped<CrearPlanUseCase>();
         services.AddScoped<ActualizarPlanUseCase>();
         services.AddScoped<ListarPlanesUseCase>();
         services.AddScoped<DesactivarPlanUseCase>();
+        services.AddScoped<EliminarPlanUseCase>();
         services.AddScoped<MarcarPlanDePruebaUseCase>();
+        services.AddScoped<DesmarcarPlanDePruebaUseCase>();
 
         services.AddScoped<ListarSuscripcionesUseCase>();
         services.AddScoped<CambiarPlanSuscripcionUseCase>();
         services.AddScoped<RenovarSuscripcionManualUseCase>();
         services.AddScoped<CancelarSuscripcionUseCase>();
 
+        services.AddScoped<ObtenerFacturacionPlataformaUseCase>();
+
+        services.AddScoped<ListarNegociosUseCase>();
+        services.AddScoped<ObtenerNegocioDetalleUseCase>();
+        services.AddScoped<CambiarEstadoNegocioUseCase>();
+
         services.AddScoped<ObtenerMiSuscripcionUseCase>();
         services.AddScoped<CambiarPlanMiSuscripcionUseCase>();
         services.AddScoped<CancelarMiSuscripcionUseCase>();
-        services.AddScoped<GenerarPagoSuscripcionUseCase>();
-        services.AddScoped<ProcesarNotificacionPagoSuscripcionUseCase>();
+        services.AddScoped<IniciarSuscripcionMercadoPagoUseCase>();
+        services.AddScoped<ProcesarNotificacionRecurrenteUseCase>();
         services.AddScoped<NotificarSuscripcionesPorVencerUseCase>();
 
         return services;

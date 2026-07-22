@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { FieldError } from '../../components/FieldError'
+import { validarEmail, validarPassword, validarRequerido, validarSlug } from '../../utils/validation'
 
 // Deriva un slug razonable del nombre del negocio; el usuario puede después ajustarlo a mano,
 // por eso dejamos de autogenerarlo apenas lo toca (slugTocado).
@@ -32,6 +34,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tocado, setTocado] = useState<Record<string, boolean>>({})
 
   if (sesion) {
     return <Navigate to="/panel/estadisticas" replace />
@@ -42,8 +45,36 @@ export function RegisterPage() {
     if (!slugTocado) setSlug(slugify(valor))
   }
 
+  const errorNombreNegocio = validarRequerido(nombreNegocio, 'El nombre del negocio')
+  const errorSlug = validarSlug(slug)
+  const errorEmailNegocio = validarEmail(emailNegocio, 'El email del negocio')
+  const errorNombreUsuario = validarRequerido(nombreUsuario, 'Tu nombre')
+  const errorEmailUsuario = validarEmail(emailUsuario, 'Tu email')
+  const errorPassword = validarPassword(password)
+
+  const formularioValido =
+    !errorNombreNegocio &&
+    !errorSlug &&
+    !errorEmailNegocio &&
+    !errorNombreUsuario &&
+    !errorEmailUsuario &&
+    !errorPassword
+
+  function marcarTodoTocado() {
+    setTocado({
+      nombreNegocio: true,
+      slug: true,
+      emailNegocio: true,
+      nombreUsuario: true,
+      emailUsuario: true,
+      password: true,
+    })
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    marcarTodoTocado()
+    if (!formularioValido) return
     setEnviando(true)
     setError(null)
     try {
@@ -83,7 +114,9 @@ export function RegisterPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={nombreNegocio}
                 onChange={(event) => handleNombreNegocioChange(event.target.value)}
+                onBlur={() => setTocado((t) => ({ ...t, nombreNegocio: true }))}
               />
+              {tocado.nombreNegocio && <FieldError message={errorNombreNegocio} />}
             </label>
 
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
@@ -100,8 +133,12 @@ export function RegisterPage() {
                   setSlugTocado(true)
                   setSlug(event.target.value)
                 }}
+                onBlur={() => setTocado((t) => ({ ...t, slug: true }))}
               />
-              {slug && <span className="text-xs font-normal text-slate-500">miturno.app/{slug}</span>}
+              {slug && !(tocado.slug && errorSlug) && (
+                <span className="text-xs font-normal text-slate-500">miturno.app/{slug}</span>
+              )}
+              {tocado.slug && <FieldError message={errorSlug} />}
             </label>
 
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
@@ -113,7 +150,9 @@ export function RegisterPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={emailNegocio}
                 onChange={(event) => setEmailNegocio(event.target.value)}
+                onBlur={() => setTocado((t) => ({ ...t, emailNegocio: true }))}
               />
+              {tocado.emailNegocio && <FieldError message={errorEmailNegocio} />}
             </label>
 
             <hr className="border-slate-200" />
@@ -127,7 +166,9 @@ export function RegisterPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={nombreUsuario}
                 onChange={(event) => setNombreUsuario(event.target.value)}
+                onBlur={() => setTocado((t) => ({ ...t, nombreUsuario: true }))}
               />
+              {tocado.nombreUsuario && <FieldError message={errorNombreUsuario} />}
             </label>
 
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
@@ -139,7 +180,9 @@ export function RegisterPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={emailUsuario}
                 onChange={(event) => setEmailUsuario(event.target.value)}
+                onBlur={() => setTocado((t) => ({ ...t, emailUsuario: true }))}
               />
+              {tocado.emailUsuario && <FieldError message={errorEmailUsuario} />}
             </label>
 
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
@@ -151,8 +194,13 @@ export function RegisterPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                onBlur={() => setTocado((t) => ({ ...t, password: true }))}
               />
-              <span className="text-xs font-normal text-slate-500">Mínimo 8 caracteres.</span>
+              {tocado.password ? (
+                <FieldError message={errorPassword} />
+              ) : (
+                <span className="text-xs font-normal text-slate-500">Mínimo 8 caracteres.</span>
+              )}
             </label>
 
             {error && <ErrorBanner message={error} />}

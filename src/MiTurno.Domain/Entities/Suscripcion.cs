@@ -14,6 +14,13 @@ public class Suscripcion : BaseEntity
     public DateTime FechaProximoVencimiento { get; private set; }
     public bool NotificacionVencimientoEnviada { get; private set; }
 
+    /// <summary>
+    /// Id de la suscripción recurrente (Preapproval) de Mercado Pago que cobra este plan automáticamente
+    /// a la cuenta de la propia plataforma. Null si el negocio nunca activó el cobro automático (paga
+    /// manualmente o vía Admin).
+    /// </summary>
+    public string? MercadoPagoPreapprovalId { get; private set; }
+
     private readonly List<PagoSuscripcion> _pagos = [];
     public IReadOnlyCollection<PagoSuscripcion> Pagos => _pagos.AsReadOnly();
 
@@ -82,6 +89,21 @@ public class Suscripcion : BaseEntity
     }
 
     public void RegistrarPago(PagoSuscripcion pago) => _pagos.Add(pago);
+
+    public void AsignarPreapproval(string preapprovalId)
+    {
+        if (string.IsNullOrWhiteSpace(preapprovalId))
+            throw new DomainException("El id de la suscripción de Mercado Pago es obligatorio.");
+
+        MercadoPagoPreapprovalId = preapprovalId;
+        MarcarActualizado();
+    }
+
+    public void QuitarPreapproval()
+    {
+        MercadoPagoPreapprovalId = null;
+        MarcarActualizado();
+    }
 
     public void CambiarPlan(Plan nuevoPlan)
     {

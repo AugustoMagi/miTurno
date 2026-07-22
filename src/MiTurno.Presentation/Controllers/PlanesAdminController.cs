@@ -14,20 +14,26 @@ public class PlanesAdminController : ControllerBase
     private readonly ActualizarPlanUseCase _actualizarPlanUseCase;
     private readonly ListarPlanesUseCase _listarPlanesUseCase;
     private readonly DesactivarPlanUseCase _desactivarPlanUseCase;
+    private readonly EliminarPlanUseCase _eliminarPlanUseCase;
     private readonly MarcarPlanDePruebaUseCase _marcarPlanDePruebaUseCase;
+    private readonly DesmarcarPlanDePruebaUseCase _desmarcarPlanDePruebaUseCase;
 
     public PlanesAdminController(
         CrearPlanUseCase crearPlanUseCase,
         ActualizarPlanUseCase actualizarPlanUseCase,
         ListarPlanesUseCase listarPlanesUseCase,
         DesactivarPlanUseCase desactivarPlanUseCase,
-        MarcarPlanDePruebaUseCase marcarPlanDePruebaUseCase)
+        EliminarPlanUseCase eliminarPlanUseCase,
+        MarcarPlanDePruebaUseCase marcarPlanDePruebaUseCase,
+        DesmarcarPlanDePruebaUseCase desmarcarPlanDePruebaUseCase)
     {
         _crearPlanUseCase = crearPlanUseCase;
         _actualizarPlanUseCase = actualizarPlanUseCase;
         _listarPlanesUseCase = listarPlanesUseCase;
         _desactivarPlanUseCase = desactivarPlanUseCase;
+        _eliminarPlanUseCase = eliminarPlanUseCase;
         _marcarPlanDePruebaUseCase = marcarPlanDePruebaUseCase;
+        _desmarcarPlanDePruebaUseCase = desmarcarPlanDePruebaUseCase;
     }
 
     [HttpGet]
@@ -63,5 +69,19 @@ public class PlanesAdminController : ControllerBase
     {
         var result = await _marcarPlanDePruebaUseCase.ExecuteAsync(id, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
+
+    [HttpPatch("{id:guid}/desmarcar-de-prueba")]
+    public async Task<IActionResult> DesmarcarDePrueba(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _desmarcarPlanDePruebaUseCase.ExecuteAsync(id, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Eliminar(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _eliminarPlanUseCase.ExecuteAsync(id, cancellationToken);
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error });
     }
 }

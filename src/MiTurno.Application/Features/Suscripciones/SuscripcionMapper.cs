@@ -13,5 +13,6 @@ internal static class SuscripcionMapper
         suscripcion.Plan.Periodicidad,
         suscripcion.Estado,
         suscripcion.FechaProximoVencimiento,
-        suscripcion.EstaActiva);
+        suscripcion.EstaActiva,
+        suscripcion.MercadoPagoPreapprovalId is not null);
 }

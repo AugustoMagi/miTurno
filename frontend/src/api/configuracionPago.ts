@@ -14,3 +14,8 @@ export async function conectarConfiguracionPago(input: ConectarConfiguracionPago
 export async function desconectarConfiguracionPago(): Promise<void> {
   await apiClient.delete('/api/configuracion-pago')
 }
+
+export async function iniciarConexionMercadoPago(): Promise<string> {
+  const { data } = await apiClient.get<{ url: string }>('/api/configuracion-pago/mercadopago/conectar')
+  return data.url
+}

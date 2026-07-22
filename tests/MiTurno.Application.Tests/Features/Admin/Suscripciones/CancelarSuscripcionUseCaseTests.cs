@@ -8,13 +8,16 @@ namespace MiTurno.Application.Tests.Features.Admin.Suscripciones;
 public class CancelarSuscripcionUseCaseTests
 {
     private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
+    private readonly IPlataformaPagoConfiguracion _plataformaPagoConfiguracion = Substitute.For<IPlataformaPagoConfiguracion>();
+    private readonly IPagoRecurrenteGateway _pagoRecurrenteGateway = Substitute.For<IPagoRecurrenteGateway>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     private readonly CancelarSuscripcionUseCase _useCase;
 
     public CancelarSuscripcionUseCaseTests()
     {
-        _useCase = new CancelarSuscripcionUseCase(_suscripcionRepository, _unitOfWork);
+        _useCase = new CancelarSuscripcionUseCase(
+            _suscripcionRepository, _plataformaPagoConfiguracion, _pagoRecurrenteGateway, _unitOfWork);
     }
 
     [Fact]

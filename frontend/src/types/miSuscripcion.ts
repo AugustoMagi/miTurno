@@ -10,11 +10,5 @@ export interface MiSuscripcion {
   estado: EstadoSuscripcion
   fechaProximoVencimiento: string
   estaActiva: boolean
-}
-
-export interface PagoSuscripcion {
-  id: string
-  monto: number
-  estado: number
-  linkPago: string | null
+  cobroAutomaticoActivo: boolean
 }

@@ -12,4 +12,7 @@ public class NegocioRepository : Repository<Negocio>, INegocioRepository
 
     public Task<Negocio?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         DbSet.FirstOrDefaultAsync(n => n.Slug == slug.ToLowerInvariant(), cancellationToken);
+
+    public async Task<IReadOnlyList<Negocio>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        await DbSet.OrderBy(n => n.Nombre).ToListAsync(cancellationToken);
 }

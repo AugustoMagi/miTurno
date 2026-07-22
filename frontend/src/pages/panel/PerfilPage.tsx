@@ -7,6 +7,8 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { FieldError } from '../../components/FieldError'
+import { validarEmail, validarPassword, validarRequerido } from '../../utils/validation'
 
 export function PerfilPage() {
   const { sesion, login } = useAuth()
@@ -19,6 +21,7 @@ export function PerfilPage() {
   const [guardando, setGuardando] = useState(false)
   const [datosError, setDatosError] = useState<string | null>(null)
   const [datosOk, setDatosOk] = useState(false)
+  const [datosTocado, setDatosTocado] = useState<{ nombre?: boolean; email?: boolean }>({})
 
   const [passwordActual, setPasswordActual] = useState('')
   const [passwordNueva, setPasswordNueva] = useState('')
@@ -26,6 +29,11 @@ export function PerfilPage() {
   const [cambiandoPassword, setCambiandoPassword] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordOk, setPasswordOk] = useState(false)
+  const [passwordTocado, setPasswordTocado] = useState<{
+    actual?: boolean
+    nueva?: boolean
+    confirmar?: boolean
+  }>({})
 
   useEffect(() => {
     obtenerMiPerfil()
@@ -37,8 +45,13 @@ export function PerfilPage() {
       .catch((err) => setCargaError(extractError(err)))
   }, [])
 
+  const errorNombre = validarRequerido(nombre, 'El nombre')
+  const errorEmail = validarEmail(email)
+
   async function handleGuardarDatos(event: React.FormEvent) {
     event.preventDefault()
+    setDatosTocado({ nombre: true, email: true })
+    if (errorNombre || errorEmail) return
     setGuardando(true)
     setDatosError(null)
     setDatosOk(false)
@@ -54,12 +67,21 @@ export function PerfilPage() {
     }
   }
 
+  const errorPasswordActual = validarRequerido(passwordActual, 'La contraseña actual')
+  const errorPasswordNueva = validarPassword(passwordNueva)
+  const errorPasswordConfirmar =
+    !errorPasswordNueva && passwordNueva !== passwordConfirmar
+      ? 'Las contraseñas nuevas no coinciden.'
+      : undefined
+
   async function handleCambiarPassword(event: React.FormEvent) {
     event.preventDefault()
+    setPasswordTocado({ actual: true, nueva: true, confirmar: true })
     setPasswordError(null)
     setPasswordOk(false)
-    if (passwordNueva !== passwordConfirmar) {
-      setPasswordError('Las contraseñas nuevas no coinciden.')
+    if (errorPasswordActual || errorPasswordNueva || errorPasswordConfirmar) return
+    if (passwordNueva === passwordActual) {
+      setPasswordError('La contraseña nueva debe ser distinta a la actual.')
       return
     }
     setCambiandoPassword(true)
@@ -100,7 +122,9 @@ export function PerfilPage() {
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={nombre}
               onChange={(event) => setNombre(event.target.value)}
+              onBlur={() => setDatosTocado((t) => ({ ...t, nombre: true }))}
             />
+            {datosTocado.nombre && <FieldError message={errorNombre} />}
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             Email
@@ -111,7 +135,9 @@ export function PerfilPage() {
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              onBlur={() => setDatosTocado((t) => ({ ...t, email: true }))}
             />
+            {datosTocado.email && <FieldError message={errorEmail} />}
           </label>
           {datosError && <ErrorBanner message={datosError} />}
           {datosOk && <p className="text-sm text-emerald-700">Datos actualizados.</p>}
@@ -132,7 +158,9 @@ export function PerfilPage() {
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={passwordActual}
               onChange={(event) => setPasswordActual(event.target.value)}
+              onBlur={() => setPasswordTocado((t) => ({ ...t, actual: true }))}
             />
+            {passwordTocado.actual && <FieldError message={errorPasswordActual} />}
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             Contraseña nueva
@@ -143,7 +171,9 @@ export function PerfilPage() {
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={passwordNueva}
               onChange={(event) => setPasswordNueva(event.target.value)}
+              onBlur={() => setPasswordTocado((t) => ({ ...t, nueva: true }))}
             />
+            {passwordTocado.nueva && <FieldError message={errorPasswordNueva} />}
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             Repetir contraseña nueva
@@ -154,7 +184,9 @@ export function PerfilPage() {
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={passwordConfirmar}
               onChange={(event) => setPasswordConfirmar(event.target.value)}
+              onBlur={() => setPasswordTocado((t) => ({ ...t, confirmar: true }))}
             />
+            {passwordTocado.confirmar && <FieldError message={errorPasswordConfirmar} />}
           </label>
           {passwordError && <ErrorBanner message={passwordError} />}
           {passwordOk && <p className="text-sm text-emerald-700">Contraseña actualizada.</p>}

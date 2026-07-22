@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import {
   cambiarPlanMiSuscripcion,
   cancelarMiSuscripcion,
+  iniciarSuscripcionMercadoPago,
   obtenerMiSuscripcion,
-  pagarMiSuscripcion,
 } from '../../api/miSuscripcion'
 import { listarPlanesPublicos } from '../../api/planesPublicos'
 import { extractError } from '../../api/client'
@@ -55,13 +56,15 @@ function TextoVencimiento({ suscripcion }: { suscripcion: MiSuscripcion }) {
 }
 
 export function MiSuscripcionPage() {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
   const [suscripcion, setSuscripcion] = useState<MiSuscripcion | null | undefined>(undefined)
   const [planes, setPlanes] = useState<PlanPublico[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [vuelvoDeMercadoPago, setVuelvoDeMercadoPago] = useState(false)
 
-  const [pagando, setPagando] = useState(false)
-  const [linkPago, setLinkPago] = useState<string | null>(null)
-  const [pagoSinLink, setPagoSinLink] = useState(false)
+  const [suscribiendo, setSuscribiendo] = useState(false)
 
   const [nuevoPlanId, setNuevoPlanId] = useState('')
   const [cambiandoPlan, setCambiandoPlan] = useState(false)
@@ -88,18 +91,25 @@ export function MiSuscripcionPage() {
 
   useEffect(cargar, [])
 
-  async function handlePagar() {
-    setPagando(true)
+  // Mercado Pago vuelve acá después de que el negocio autoriza (o no) el cobro recurrente. La
+  // activación llega después, por webhook, así que puede tardar en reflejarse.
+  useEffect(() => {
+    if (searchParams.get('mp') === 'vuelta') {
+      setVuelvoDeMercadoPago(true)
+      navigate('/panel/suscripcion', { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handleSuscribirme() {
+    setSuscribiendo(true)
     setError(null)
-    setPagoSinLink(false)
     try {
-      const pago = await pagarMiSuscripcion()
-      if (pago.linkPago) setLinkPago(pago.linkPago)
-      else setPagoSinLink(true)
+      const initPoint = await iniciarSuscripcionMercadoPago()
+      window.location.href = initPoint
     } catch (err) {
       setError(extractError(err))
-    } finally {
-      setPagando(false)
+      setSuscribiendo(false)
     }
   }
 
@@ -139,6 +149,11 @@ export function MiSuscripcionPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold text-slate-900">Mi suscripción</h1>
 
+      {vuelvoDeMercadoPago && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          Estamos confirmando tu suscripción con Mercado Pago. Puede tardar unos minutos en reflejarse acá.
+        </div>
+      )}
       {error && <ErrorBanner message={error} />}
 
       {suscripcion === null ? (
@@ -165,20 +180,14 @@ export function MiSuscripcionPage() {
             </div>
             <TextoVencimiento suscripcion={suscripcion} />
 
-            {linkPago ? (
-              <Button onClick={() => (window.location.href = linkPago)}>Ir a pagar con Mercado Pago</Button>
-            ) : (
-              <>
-                <Button disabled={pagando} onClick={handlePagar} className="self-start">
-                  {pagando ? 'Generando…' : 'Pagar suscripción'}
-                </Button>
-                {pagoSinLink && (
-                  <p className="text-sm text-slate-500">
-                    El pago quedó pendiente de registro, pero la plataforma todavía no tiene el cobro
-                    automático configurado. Contactá a soporte para coordinar el pago.
-                  </p>
-                )}
-              </>
+            {suscripcion.cobroAutomaticoActivo ? (
+              <p className="text-sm text-emerald-700">
+                ✓ Cobro automático activado: Mercado Pago te cobra solo en cada renovación.
+              </p>
+            ) : suscripcion.estado === EstadoSuscripcion.Cancelada ? null : (
+              <Button disabled={suscribiendo} onClick={handleSuscribirme} className="self-start">
+                {suscribiendo ? 'Redirigiendo…' : 'Suscribirme con Mercado Pago'}
+              </Button>
             )}
           </Card>
 
@@ -215,7 +224,10 @@ export function MiSuscripcionPage() {
             <Card className="flex flex-col gap-3">
               <h2 className="font-semibold text-slate-900">Cancelar suscripción</h2>
               <p className="text-sm text-slate-500">
-                Dejás de tener acceso al finalizar el período vigente. Podés volver a suscribirte cuando quieras.
+                {suscripcion.cobroAutomaticoActivo
+                  ? 'También cancela el cobro automático en Mercado Pago: no te va a cobrar de nuevo.'
+                  : 'Dejás de tener acceso al finalizar el período vigente.'}{' '}
+                Podés volver a suscribirte cuando quieras.
               </p>
               <button
                 type="button"

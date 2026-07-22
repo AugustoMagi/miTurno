@@ -10,11 +10,19 @@ public class AuthController : ControllerBase
 {
     private readonly RegistrarNegocioUseCase _registrarNegocioUseCase;
     private readonly LoginUseCase _loginUseCase;
+    private readonly SolicitarReseteoPasswordUseCase _solicitarReseteoPasswordUseCase;
+    private readonly RestablecerPasswordUseCase _restablecerPasswordUseCase;
 
-    public AuthController(RegistrarNegocioUseCase registrarNegocioUseCase, LoginUseCase loginUseCase)
+    public AuthController(
+        RegistrarNegocioUseCase registrarNegocioUseCase,
+        LoginUseCase loginUseCase,
+        SolicitarReseteoPasswordUseCase solicitarReseteoPasswordUseCase,
+        RestablecerPasswordUseCase restablecerPasswordUseCase)
     {
         _registrarNegocioUseCase = registrarNegocioUseCase;
         _loginUseCase = loginUseCase;
+        _solicitarReseteoPasswordUseCase = solicitarReseteoPasswordUseCase;
+        _restablecerPasswordUseCase = restablecerPasswordUseCase;
     }
 
     [HttpPost("registro")]
@@ -29,5 +37,21 @@ public class AuthController : ControllerBase
     {
         var result = await _loginUseCase.ExecuteAsync(request, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : Unauthorized(new { error = result.Error });
+    }
+
+    [HttpPost("solicitar-reseteo-password")]
+    public async Task<IActionResult> SolicitarReseteoPassword(
+        SolicitarReseteoPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _solicitarReseteoPasswordUseCase.ExecuteAsync(request, cancellationToken);
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error });
+    }
+
+    [HttpPost("restablecer-password")]
+    public async Task<IActionResult> RestablecerPassword(
+        RestablecerPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _restablecerPasswordUseCase.ExecuteAsync(request, cancellationToken);
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error });
     }
 }

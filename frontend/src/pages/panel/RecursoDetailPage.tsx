@@ -12,6 +12,13 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { FieldError } from '../../components/FieldError'
+import {
+  validarEntero,
+  validarNumeroNoNegativo,
+  validarRangoHorario,
+  validarRequerido,
+} from '../../utils/validation'
 
 function formatHora(horaHms: string): string {
   return horaHms.slice(0, 5)
@@ -35,6 +42,7 @@ export function RecursoDetailPage() {
   const [guardando, setGuardando] = useState(false)
   const [guardadoError, setGuardadoError] = useState<string | null>(null)
   const [guardadoOk, setGuardadoOk] = useState(false)
+  const [datosTocado, setDatosTocado] = useState<Record<string, boolean>>({})
 
   const [horarios, setHorarios] = useState<HorarioDisponible[] | null>(null)
   const [diaSemana, setDiaSemana] = useState(1)
@@ -80,9 +88,17 @@ export function RecursoDetailPage() {
     cargarBloqueos(id)
   }, [id])
 
+  const errorNombre = validarRequerido(nombre, 'El nombre')
+  const errorTipo = validarRequerido(tipo, 'El tipo')
+  const errorDuracion = validarEntero(duracionTurnoMinutos, 'La duración del turno', 1)
+  const errorPrecio = validarNumeroNoNegativo(precio, 'El precio')
+  const errorRangoHorario = validarRangoHorario(horaInicio, horaFin)
+
   async function handleGuardar(event: React.FormEvent) {
     event.preventDefault()
     if (!id) return
+    setDatosTocado({ nombre: true, tipo: true, duracion: true, precio: true })
+    if (errorNombre || errorTipo || errorDuracion || errorPrecio) return
     setGuardando(true)
     setGuardadoError(null)
     setGuardadoOk(false)
@@ -100,6 +116,10 @@ export function RecursoDetailPage() {
   async function handleAgregarHorario(event: React.FormEvent) {
     event.preventDefault()
     if (!id) return
+    if (errorRangoHorario) {
+      setHorarioError(errorRangoHorario)
+      return
+    }
     setAgregandoHorario(true)
     setHorarioError(null)
     try {
@@ -124,7 +144,11 @@ export function RecursoDetailPage() {
 
   async function handleAgregarBloqueo(event: React.FormEvent) {
     event.preventDefault()
-    if (!id || !fechaBloqueo) return
+    if (!id) return
+    if (!fechaBloqueo) {
+      setBloqueoError('La fecha es obligatoria.')
+      return
+    }
     setAgregandoBloqueo(true)
     setBloqueoError(null)
     setUltimoBloqueoAfectados(null)
@@ -176,7 +200,9 @@ export function RecursoDetailPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={nombre}
                 onChange={(event) => setNombre(event.target.value)}
+                onBlur={() => setDatosTocado((t) => ({ ...t, nombre: true }))}
               />
+              {datosTocado.nombre && <FieldError message={errorNombre} />}
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
               Tipo
@@ -186,7 +212,9 @@ export function RecursoDetailPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={tipo}
                 onChange={(event) => setTipo(event.target.value)}
+                onBlur={() => setDatosTocado((t) => ({ ...t, tipo: true }))}
               />
+              {datosTocado.tipo && <FieldError message={errorTipo} />}
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
               Duración del turno (min)
@@ -197,7 +225,9 @@ export function RecursoDetailPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={duracionTurnoMinutos}
                 onChange={(event) => setDuracionTurnoMinutos(Number(event.target.value))}
+                onBlur={() => setDatosTocado((t) => ({ ...t, duracion: true }))}
               />
+              {datosTocado.duracion && <FieldError message={errorDuracion} />}
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
               Precio
@@ -209,7 +239,9 @@ export function RecursoDetailPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={precio}
                 onChange={(event) => setPrecio(Number(event.target.value))}
+                onBlur={() => setDatosTocado((t) => ({ ...t, precio: true }))}
               />
+              {datosTocado.precio && <FieldError message={errorPrecio} />}
             </label>
           </div>
           {guardadoError && <ErrorBanner message={guardadoError} />}

@@ -12,4 +12,10 @@ public class ConfiguracionPagoRepository : Repository<ConfiguracionPago>, IConfi
 
     public Task<ConfiguracionPago?> GetActivaByNegocioIdAsync(Guid negocioId, CancellationToken cancellationToken = default) =>
         DbSet.FirstOrDefaultAsync(c => c.NegocioId == negocioId && c.Activo, cancellationToken);
+
+    public async Task<IReadOnlyList<ConfiguracionPago>> GetConexionesOAuthPorVencerAsync(
+        DateTime antesDe, CancellationToken cancellationToken = default) =>
+        await DbSet
+            .Where(c => c.Activo && c.RefreshToken != null && c.AccessTokenExpiraEn <= antesDe)
+            .ToListAsync(cancellationToken);
 }

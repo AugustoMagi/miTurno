@@ -7,5 +7,6 @@ public record ConfiguracionPagoResponse(
     ProveedorPago Proveedor,
     string Alias,
     bool TieneAccessToken,
+    bool ConectadoConOAuth,
     bool Activo,
     DateTime FechaCreacion);

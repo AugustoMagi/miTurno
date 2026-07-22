@@ -6,6 +6,8 @@ import type { EstadisticasOcupacion } from '../../types/estadisticas'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { FieldError } from '../../components/FieldError'
+import { validarRangoFechas } from '../../utils/validation'
 
 const ESTADO_LABEL: Record<EstadoReserva, string> = {
   [EstadoReserva.Pendiente]: 'Pendientes',
@@ -32,6 +34,8 @@ export function EstadisticasPage() {
 
   useEffect(cargar, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const errorRango = validarRangoFechas(desde, hasta)
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold text-slate-900">Estadísticas de ocupación</h1>
@@ -41,6 +45,7 @@ export function EstadisticasPage() {
           className="flex flex-wrap items-end gap-3"
           onSubmit={(event) => {
             event.preventDefault()
+            if (errorRango) return
             cargar()
           }}
         >
@@ -64,11 +69,13 @@ export function EstadisticasPage() {
           </label>
           <button
             type="submit"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+            disabled={!!errorRango}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Filtrar
           </button>
         </form>
+        {errorRango && <FieldError message={errorRango} />}
       </Card>
 
       {error && <ErrorBanner message={error} />}

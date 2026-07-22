@@ -18,6 +18,7 @@ public class ConfiguracionPagoConfiguration : IEntityTypeConfiguration<Configura
         builder.Property(c => c.Alias).IsRequired().HasMaxLength(200);
 
         builder.Property(c => c.AccessToken).HasMaxLength(500);
+        builder.Property(c => c.RefreshToken).HasMaxLength(500);
 
         builder.HasOne<Negocio>()
             .WithMany()

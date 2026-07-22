@@ -24,3 +24,12 @@ export async function marcarPlanDePrueba(id: string): Promise<Plan> {
   const { data } = await apiClient.patch<Plan>(`/api/admin/planes/${id}/marcar-de-prueba`)
   return data
 }
+
+export async function desmarcarPlanDePrueba(id: string): Promise<Plan> {
+  const { data } = await apiClient.patch<Plan>(`/api/admin/planes/${id}/desmarcar-de-prueba`)
+  return data
+}
+
+export async function eliminarPlan(id: string): Promise<void> {
+  await apiClient.delete(`/api/admin/planes/${id}`)
+}

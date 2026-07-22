@@ -14,6 +14,14 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { FieldError } from '../../components/FieldError'
+import { validarFechaNoPasada } from '../../utils/validation'
+
+function hoyIso(): string {
+  const now = new Date()
+  const offset = now.getTimezoneOffset()
+  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10)
+}
 
 const ESTADO_LABEL: Record<EstadoSuscripcion, string> = {
   [EstadoSuscripcion.EnPrueba]: 'En prueba',
@@ -55,8 +63,10 @@ function FilaSuscripcion({ suscripcion, planes, onCambiada }: FilaProps) {
     }
   }
 
+  const errorVencimiento = validarFechaNoPasada(nuevoVencimiento, hoyIso())
+
   async function handleRenovar() {
-    if (!nuevoVencimiento) return
+    if (!nuevoVencimiento || errorVencimiento) return
     setProcesando(true)
     setError(null)
     try {
@@ -128,8 +138,13 @@ function FilaSuscripcion({ suscripcion, planes, onCambiada }: FilaProps) {
             value={nuevoVencimiento}
             onChange={(event) => setNuevoVencimiento(event.target.value)}
           />
+          {nuevoVencimiento && <FieldError message={errorVencimiento} />}
         </label>
-        <Button variant="secondary" disabled={procesando || !nuevoVencimiento} onClick={handleRenovar}>
+        <Button
+          variant="secondary"
+          disabled={procesando || !nuevoVencimiento || !!errorVencimiento}
+          onClick={handleRenovar}
+        >
           Renovar
         </Button>
 

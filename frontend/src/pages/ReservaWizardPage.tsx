@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { cancelarReservaCliente, crearReserva, getNegocioPublico, getTurnosDisponibles } from '../api/negociosPublicos'
 import { extractError } from '../api/client'
@@ -7,6 +7,8 @@ import { Card } from '../components/Card'
 import { Button } from '../components/Button'
 import { Spinner } from '../components/Spinner'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { FieldError } from '../components/FieldError'
+import { validarEmail, validarRequerido, validarTelefono } from '../utils/validation'
 
 function todayIsoDate(): string {
   const now = new Date()
@@ -33,6 +35,7 @@ export function ReservaWizardPage() {
   const [clienteNombre, setClienteNombre] = useState('')
   const [clienteEmail, setClienteEmail] = useState('')
   const [clienteTelefono, setClienteTelefono] = useState('')
+  const [tocado, setTocado] = useState<{ nombre?: boolean; email?: boolean; telefono?: boolean }>({})
   const [enviando, setEnviando] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -65,14 +68,16 @@ export function ReservaWizardPage() {
       .finally(() => setTurnosLoading(false))
   }, [slug, recursoId, fecha])
 
-  const formularioValido = useMemo(
-    () => clienteNombre.trim().length > 0 && /^\S+@\S+\.\S+$/.test(clienteEmail),
-    [clienteNombre, clienteEmail],
-  )
+  const errorNombre = validarRequerido(clienteNombre, 'El nombre')
+  const errorEmail = validarEmail(clienteEmail)
+  const errorTelefono = validarTelefono(clienteTelefono)
+
+  const formularioValido = !errorNombre && !errorEmail && !errorTelefono
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!slug || !recursoId || !turnoSeleccionado) return
+    setTocado({ nombre: true, email: true, telefono: true })
+    if (!slug || !recursoId || !turnoSeleccionado || !formularioValido) return
     setEnviando(true)
     setSubmitError(null)
     try {
@@ -249,7 +254,9 @@ export function ReservaWizardPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={clienteNombre}
                 onChange={(event) => setClienteNombre(event.target.value)}
+                onBlur={() => setTocado((t) => ({ ...t, nombre: true }))}
               />
+              {tocado.nombre && <FieldError message={errorNombre} />}
             </label>
 
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
@@ -261,7 +268,9 @@ export function ReservaWizardPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={clienteEmail}
                 onChange={(event) => setClienteEmail(event.target.value)}
+                onBlur={() => setTocado((t) => ({ ...t, email: true }))}
               />
+              {tocado.email && <FieldError message={errorEmail} />}
             </label>
 
             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
@@ -272,7 +281,9 @@ export function ReservaWizardPage() {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={clienteTelefono}
                 onChange={(event) => setClienteTelefono(event.target.value)}
+                onBlur={() => setTocado((t) => ({ ...t, telefono: true }))}
               />
+              {tocado.telefono && <FieldError message={errorTelefono} />}
             </label>
 
             {submitError && <ErrorBanner message={submitError} />}

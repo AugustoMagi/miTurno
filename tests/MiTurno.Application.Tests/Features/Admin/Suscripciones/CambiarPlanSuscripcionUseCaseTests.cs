@@ -11,6 +11,8 @@ public class CambiarPlanSuscripcionUseCaseTests
     private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
     private readonly IPlanRepository _planRepository = Substitute.For<IPlanRepository>();
     private readonly INegocioRepository _negocioRepository = Substitute.For<INegocioRepository>();
+    private readonly IPlataformaPagoConfiguracion _plataformaPagoConfiguracion = Substitute.For<IPlataformaPagoConfiguracion>();
+    private readonly IPagoRecurrenteGateway _pagoRecurrenteGateway = Substitute.For<IPagoRecurrenteGateway>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     private readonly CambiarPlanSuscripcionUseCase _useCase;
@@ -18,7 +20,8 @@ public class CambiarPlanSuscripcionUseCaseTests
     public CambiarPlanSuscripcionUseCaseTests()
     {
         _useCase = new CambiarPlanSuscripcionUseCase(
-            _suscripcionRepository, _planRepository, _negocioRepository, _unitOfWork);
+            _suscripcionRepository, _planRepository, _negocioRepository,
+            _plataformaPagoConfiguracion, _pagoRecurrenteGateway, _unitOfWork);
     }
 
     [Fact]

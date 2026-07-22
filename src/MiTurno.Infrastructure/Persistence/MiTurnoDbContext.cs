@@ -8,11 +8,13 @@ namespace MiTurno.Infrastructure.Persistence;
 public class MiTurnoDbContext : DbContext
 {
     private readonly IDataProtector _accessTokenProtector;
+    private readonly IDataProtector _refreshTokenProtector;
 
     public MiTurnoDbContext(DbContextOptions<MiTurnoDbContext> options, IDataProtectionProvider dataProtectionProvider)
         : base(options)
     {
         _accessTokenProtector = dataProtectionProvider.CreateProtector("MiTurno.ConfiguracionPago.AccessToken");
+        _refreshTokenProtector = dataProtectionProvider.CreateProtector("MiTurno.ConfiguracionPago.RefreshToken");
     }
 
     public DbSet<Negocio> Negocios => Set<Negocio>();
@@ -33,15 +35,24 @@ public class MiTurnoDbContext : DbContext
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MiTurnoDbContext).Assembly);
 
-        // AccessToken es una credencial real (a diferencia del Alias, que es solo un dato de
-        // exhibición), así que se cifra en la columna con Data Protection en vez de guardarla en
-        // texto plano.
+        // AccessToken/RefreshToken son credenciales reales (a diferencia del Alias, que es solo un
+        // dato de exhibición), así que se cifran en la columna con Data Protection en vez de
+        // guardarse en texto plano. Cada una con su propio protector (purpose string distinto), como
+        // recomienda Data Protection para separar datos de distinta sensibilidad/uso.
         var accessTokenConverter = new ValueConverter<string?, string?>(
             v => v == null ? null : _accessTokenProtector.Protect(v),
             v => v == null ? null : _accessTokenProtector.Unprotect(v));
 
+        var refreshTokenConverter = new ValueConverter<string?, string?>(
+            v => v == null ? null : _refreshTokenProtector.Protect(v),
+            v => v == null ? null : _refreshTokenProtector.Unprotect(v));
+
         modelBuilder.Entity<ConfiguracionPago>()
             .Property(c => c.AccessToken)
             .HasConversion(accessTokenConverter);
+
+        modelBuilder.Entity<ConfiguracionPago>()
+            .Property(c => c.RefreshToken)
+            .HasConversion(refreshTokenConverter);
     }
 }

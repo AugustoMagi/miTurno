@@ -20,8 +20,13 @@ public class SuscripcionRepository : Repository<Suscripcion>, ISuscripcionReposi
     public Task<Suscripcion?> GetByNegocioIdAsync(Guid negocioId, CancellationToken cancellationToken = default) =>
         DbSet.Include(s => s.Plan).Include(s => s.Pagos).FirstOrDefaultAsync(s => s.NegocioId == negocioId, cancellationToken);
 
+    // Se incluye Pagos también acá (y no solo en GetByIdAsync) porque el reporte de facturación del
+    // SysAdmin necesita agregar PagoSuscripcion de todas las suscripciones a la vez.
     public async Task<IReadOnlyList<Suscripcion>> GetAllAsync(CancellationToken cancellationToken = default) =>
-        await DbSet.Include(s => s.Plan).ToListAsync(cancellationToken);
+        await DbSet.Include(s => s.Plan).Include(s => s.Pagos).ToListAsync(cancellationToken);
+
+    public Task<bool> ExisteConPlanIdAsync(Guid planId, CancellationToken cancellationToken = default) =>
+        DbSet.AnyAsync(s => s.PlanId == planId, cancellationToken);
 
     public async Task<IReadOnlyList<Suscripcion>> GetPendientesDeNotificarVencimientoAsync(
         DateTime hasta, CancellationToken cancellationToken = default) =>

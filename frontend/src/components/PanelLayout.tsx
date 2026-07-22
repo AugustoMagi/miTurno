@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/panel/clientes', label: 'Clientes' },
   { to: '/panel/configuracion-pago', label: 'Cobro' },
   { to: '/panel/suscripcion', label: 'Suscripción' },
+  { to: '/panel/negocio', label: 'Mi negocio' },
   { to: '/panel/perfil', label: 'Perfil' },
 ]
 

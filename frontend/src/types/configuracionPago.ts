@@ -10,6 +10,7 @@ export interface ConfiguracionPago {
   proveedor: ProveedorPago
   alias: string
   tieneAccessToken: boolean
+  conectadoConOAuth: boolean
   activo: boolean
   fechaCreacion: string
 }

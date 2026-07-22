@@ -72,6 +72,16 @@ public class SmtpEmailNotificador : IEmailNotificador
             "Renová a tiempo para que tu link público de reservas no quede bloqueado.",
             cancellationToken);
 
+    public Task NotificarReseteoPasswordAsync(NotificacionReseteoPassword n, CancellationToken cancellationToken = default) =>
+        EnviarAsync(
+            n.UsuarioEmail,
+            "Recuperá tu contraseña de MiTurno",
+            $"Hola {n.UsuarioNombre},\n\n" +
+            "Pediste restablecer tu contraseña. Entrá al siguiente link para elegir una nueva " +
+            $"(vence en 30 minutos):\n\n{n.LinkReseteo}\n\n" +
+            "Si no fuiste vos, podés ignorar este email: tu contraseña actual sigue siendo válida.",
+            cancellationToken);
+
     private static string FormatearFecha(NotificacionReserva n) =>
         FormatearFecha(n.Fecha, n.HoraInicio, n.HoraFin);
 

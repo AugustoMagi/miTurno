@@ -1,10 +1,12 @@
 
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using MiTurno.Application;
 using MiTurno.Infrastructure;
+using MiTurno.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,6 +76,9 @@ if (app.Environment.IsDevelopment())
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "MiTurno API v1");
     });
+
+    using var migrationScope = app.Services.CreateScope();
+    migrationScope.ServiceProvider.GetRequiredService<MiTurnoDbContext>().Database.Migrate();
 }
 
 app.UseHttpsRedirection();

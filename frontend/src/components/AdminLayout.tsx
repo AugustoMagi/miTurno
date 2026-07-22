@@ -5,6 +5,8 @@ import { useAdminAuth } from '../context/AdminAuthContext'
 const NAV_ITEMS = [
   { to: '/admin/planes', label: 'Planes' },
   { to: '/admin/suscripciones', label: 'Suscripciones' },
+  { to: '/admin/facturacion', label: 'Facturación' },
+  { to: '/admin/negocios', label: 'Negocios' },
 ]
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
