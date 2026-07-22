@@ -31,6 +31,7 @@ export function ReservaWizardPage() {
   const [turnosLoading, setTurnosLoading] = useState(false)
   const [turnosError, setTurnosError] = useState<string | null>(null)
   const [turnoSeleccionado, setTurnoSeleccionado] = useState<TurnoDisponible | null>(null)
+  const [mostrarListaHorarios, setMostrarListaHorarios] = useState(true)
 
   const [clienteNombre, setClienteNombre] = useState('')
   const [clienteEmail, setClienteEmail] = useState('')
@@ -62,6 +63,7 @@ export function ReservaWizardPage() {
     setTurnosLoading(true)
     setTurnosError(null)
     setTurnoSeleccionado(null)
+    setMostrarListaHorarios(true)
     getTurnosDisponibles(slug, recursoId, fecha)
       .then(setTurnos)
       .catch((err) => setTurnosError(extractError(err)))
@@ -217,22 +219,54 @@ export function ReservaWizardPage() {
           <ErrorBanner message={turnosError} />
         ) : turnos.length === 0 ? (
           <p className="text-sm text-slate-500">No hay turnos disponibles ese día.</p>
+        ) : turnoSeleccionado && !mostrarListaHorarios ? (
+          <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">
+            <span className="font-medium text-emerald-800">
+              Horario elegido: {formatHora(turnoSeleccionado.horaInicio)} - {formatHora(turnoSeleccionado.horaFin)}
+            </span>
+            <button
+              type="button"
+              onClick={() => setMostrarListaHorarios(true)}
+              className="font-medium text-emerald-700 hover:underline"
+            >
+              Cambiar
+            </button>
+          </div>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200">
             {turnos.map((turno) => {
               const seleccionado = turno.horaInicio === turnoSeleccionado?.horaInicio
               return (
                 <button
                   key={turno.horaInicio}
                   type="button"
-                  onClick={() => setTurnoSeleccionado(turno)}
-                  className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                  onClick={() => {
+                    setTurnoSeleccionado(turno)
+                    setMostrarListaHorarios(false)
+                  }}
+                  className={`flex items-center justify-between border-l-4 px-4 py-3 text-left text-sm font-medium transition-colors ${
                     seleccionado
-                      ? 'border-emerald-600 bg-emerald-600 text-white'
-                      : 'border-slate-300 bg-white text-slate-700 hover:border-emerald-400'
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+                      : 'border-transparent text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  {formatHora(turno.horaInicio)}
+                  <span>
+                    {formatHora(turno.horaInicio)} - {formatHora(turno.horaFin)}
+                  </span>
+                  {seleccionado && (
+                    <svg
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="h-5 w-5 text-emerald-600"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.704 5.29a1 1 0 010 1.415l-7.4 7.4a1 1 0 01-1.414 0l-3.6-3.6a1 1 0 111.414-1.414l2.893 2.893 6.693-6.693a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
                 </button>
               )
             })}
