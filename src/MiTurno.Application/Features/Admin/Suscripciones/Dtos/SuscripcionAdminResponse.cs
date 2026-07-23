@@ -12,4 +12,5 @@ public record SuscripcionAdminResponse(
     decimal PlanPrecio,
     EstadoSuscripcion Estado,
     DateTime FechaInicio,
-    DateTime FechaProximoVencimiento);
+    DateTime FechaProximoVencimiento,
+    bool CobroAutomaticoActivo);

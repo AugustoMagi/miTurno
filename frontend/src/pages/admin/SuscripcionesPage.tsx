@@ -99,9 +99,16 @@ function FilaSuscripcion({ suscripcion, planes, onCambiada }: FilaProps) {
           <p className="font-semibold text-slate-900">{suscripcion.negocioNombre}</p>
           <p className="text-sm text-slate-500">{suscripcion.negocioEmail}</p>
         </div>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ESTADO_CLASSES[suscripcion.estado]}`}>
-          {ESTADO_LABEL[suscripcion.estado]}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {suscripcion.cobroAutomaticoActivo && (
+            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+              Cobro automático
+            </span>
+          )}
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ESTADO_CLASSES[suscripcion.estado]}`}>
+            {ESTADO_LABEL[suscripcion.estado]}
+          </span>
+        </div>
       </div>
       <p className="text-sm text-slate-500">
         Plan <span className="font-medium text-slate-900">{suscripcion.planNombre}</span> · vence{' '}

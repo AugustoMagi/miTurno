@@ -18,4 +18,5 @@ export interface SuscripcionAdmin {
   estado: EstadoSuscripcion
   fechaInicio: string
   fechaProximoVencimiento: string
+  cobroAutomaticoActivo: boolean
 }
