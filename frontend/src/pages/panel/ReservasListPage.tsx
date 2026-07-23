@@ -34,6 +34,7 @@ export function ReservasListPage() {
   const [reservas, setReservas] = useState<ReservaOwner[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [procesando, setProcesando] = useState<string | null>(null)
+  const [filtroFecha, setFiltroFecha] = useState('')
 
   function cargar() {
     setError(null)
@@ -59,20 +60,43 @@ export function ReservasListPage() {
 
   if (!reservas) return <Spinner />
 
+  const reservasFiltradas = reservas
+    .filter((reserva) => !filtroFecha || reserva.fecha === filtroFecha)
+    .sort((a, b) => `${b.fecha}${b.horaInicio}`.localeCompare(`${a.fecha}${a.horaInicio}`))
+
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-slate-900">Reservas</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-slate-900">Reservas</h1>
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+          Filtrar por día
+          <input
+            type="date"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+            value={filtroFecha}
+            onChange={(event) => setFiltroFecha(event.target.value)}
+          />
+          {filtroFecha && (
+            <button
+              type="button"
+              onClick={() => setFiltroFecha('')}
+              className="text-emerald-700 hover:underline"
+            >
+              Ver todas
+            </button>
+          )}
+        </label>
+      </div>
 
       {error && <ErrorBanner message={error} />}
 
       {reservas.length === 0 ? (
         <p className="text-slate-500">Todavía no hay reservas.</p>
+      ) : reservasFiltradas.length === 0 ? (
+        <p className="text-slate-500">No hay reservas ese día.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {reservas
-            .slice()
-            .sort((a, b) => (a.fecha + a.horaInicio > b.fecha + b.horaInicio ? -1 : 1))
-            .map((reserva) => (
+          {reservasFiltradas.map((reserva) => (
               <Card key={reserva.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
