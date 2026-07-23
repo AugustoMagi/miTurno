@@ -39,20 +39,23 @@ public class ListarTurnosDisponiblesUseCaseTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConVentanaDeTresHorasYTurnosDeUnaHora_DevuelveTresTurnosLibres()
+    public async Task ExecuteAsync_ConVentanaDeTresHorasYTurnosDeUnaHora_OfreceUnInicioCada15Minutos()
     {
         var (negocio, recurso) = EscenarioValido();
 
         var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, FechaFutura);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().HaveCount(3);
+        // Ventana 18:00-21:00, turno de 1h: el último inicio posible es 20:00 (20:00+1h=21:00).
+        // Inicios cada 15 min desde 18:00 hasta 20:00 inclusive => 9 turnos.
+        result.Value.Should().HaveCount(9);
         result.Value[0].HoraInicio.Should().Be(TimeSpan.FromHours(18));
-        result.Value[2].HoraInicio.Should().Be(TimeSpan.FromHours(20));
+        result.Value[1].HoraInicio.Should().Be(TimeSpan.FromHours(18) + TimeSpan.FromMinutes(15));
+        result.Value[^1].HoraInicio.Should().Be(TimeSpan.FromHours(20));
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConUnTurnoYaReservado_LoExcluyeDelResultado()
+    public async Task ExecuteAsync_ConUnTurnoYaReservado_ExcluyeCualquierInicioQueSeSuperpongaConEl()
     {
         var (negocio, recurso) = EscenarioValido();
         var reservaExistente = Reserva.Crear(
@@ -62,12 +65,14 @@ public class ListarTurnosDisponiblesUseCaseTests
         var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, FechaFutura);
 
         result.IsSuccess.Should().BeTrue();
+        // Cualquier inicio candidato entre 18:15 y 19:45 (turno de 1h) se superpone con 19:00-20:00.
+        result.Value.Should().OnlyContain(t =>
+            t.HoraFin <= TimeSpan.FromHours(19) || t.HoraInicio >= TimeSpan.FromHours(20));
         result.Value.Should().HaveCount(2);
-        result.Value.Should().NotContain(t => t.HoraInicio == TimeSpan.FromHours(19));
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConReservaCancelada_LaIgnoraYDejaElTurnoLibre()
+    public async Task ExecuteAsync_ConReservaCancelada_LaIgnoraYDejaTodosLosTurnosLibres()
     {
         var (negocio, recurso) = EscenarioValido();
         var reservaCancelada = Reserva.Crear(
@@ -78,7 +83,7 @@ public class ListarTurnosDisponiblesUseCaseTests
         var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, FechaFutura);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().HaveCount(3);
+        result.Value.Should().HaveCount(9);
     }
 
     [Fact]
@@ -112,8 +117,10 @@ public class ListarTurnosDisponiblesUseCaseTests
         var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, hoy);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().ContainSingle();
-        result.Value[0].HoraInicio.Should().Be(TimeSpan.FromHours(20));
+        // Son las 19:30: los inicios de 18:00 a 19:30 (inclusive) ya pasaron; quedan 19:45 y 20:00.
+        result.Value.Should().HaveCount(2);
+        result.Value[0].HoraInicio.Should().Be(TimeSpan.FromHours(19) + TimeSpan.FromMinutes(45));
+        result.Value[1].HoraInicio.Should().Be(TimeSpan.FromHours(20));
     }
 
     [Fact]

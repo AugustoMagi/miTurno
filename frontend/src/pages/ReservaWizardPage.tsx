@@ -20,6 +20,12 @@ function formatHora(horaHms: string): string {
   return horaHms.slice(0, 5)
 }
 
+// "08:00:00" es hora en punto, "08:15:00" no: distinguirlas ayuda a ubicarse en una lista larga de
+// horarios cada 15 minutos.
+function esHoraEnPunto(horaHms: string): boolean {
+  return horaHms.slice(3, 5) === '00'
+}
+
 export function ReservaWizardPage() {
   const { slug, recursoId } = useParams<{ slug: string; recursoId: string }>()
 
@@ -247,7 +253,9 @@ export function ReservaWizardPage() {
                   className={`flex items-center justify-between border-l-4 px-4 py-3 text-left text-sm font-medium transition-colors ${
                     seleccionado
                       ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                      : 'border-transparent text-slate-700 hover:bg-slate-50'
+                      : esHoraEnPunto(turno.horaInicio)
+                        ? 'border-transparent bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        : 'border-transparent text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <span>

@@ -12,6 +12,12 @@ namespace MiTurno.Application.Features.Public;
 /// </summary>
 public class ListarTurnosDisponiblesUseCase
 {
+    // Los horarios de inicio se ofrecen cada 15 minutos (no cada DuracionTurno completa), para que
+    // el cliente pueda arrancar, por ejemplo, a las 9:15 si el turno anterior terminó a esa hora, en
+    // vez de solo poder elegir horas "redondas". La duración de cada turno sigue siendo la del
+    // recurso; el chequeo de superposición contra las reservas ya existentes es el mismo de siempre.
+    private static readonly TimeSpan GranularidadInicio = TimeSpan.FromMinutes(15);
+
     private readonly ResolverNegocioPublicoService _resolverNegocioPublicoService;
     private readonly IRecursoRepository _recursoRepository;
     private readonly IReservaRepository _reservaRepository;
@@ -66,7 +72,7 @@ public class ListarTurnosDisponiblesUseCase
                 if (!yaPaso && !ocupado)
                     turnos.Add(new TurnoDisponibleResponse(inicio, fin));
 
-                inicio = fin;
+                inicio += GranularidadInicio;
             }
         }
 
