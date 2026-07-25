@@ -12,17 +12,20 @@ namespace MiTurno.Presentation.Controllers;
 public class SuscripcionController : ControllerBase
 {
     private readonly ObtenerMiSuscripcionUseCase _obtenerMiSuscripcionUseCase;
+    private readonly ElegirPlanUseCase _elegirPlanUseCase;
     private readonly IniciarSuscripcionMercadoPagoUseCase _iniciarSuscripcionMercadoPagoUseCase;
     private readonly CambiarPlanMiSuscripcionUseCase _cambiarPlanMiSuscripcionUseCase;
     private readonly CancelarMiSuscripcionUseCase _cancelarMiSuscripcionUseCase;
 
     public SuscripcionController(
         ObtenerMiSuscripcionUseCase obtenerMiSuscripcionUseCase,
+        ElegirPlanUseCase elegirPlanUseCase,
         IniciarSuscripcionMercadoPagoUseCase iniciarSuscripcionMercadoPagoUseCase,
         CambiarPlanMiSuscripcionUseCase cambiarPlanMiSuscripcionUseCase,
         CancelarMiSuscripcionUseCase cancelarMiSuscripcionUseCase)
     {
         _obtenerMiSuscripcionUseCase = obtenerMiSuscripcionUseCase;
+        _elegirPlanUseCase = elegirPlanUseCase;
         _iniciarSuscripcionMercadoPagoUseCase = iniciarSuscripcionMercadoPagoUseCase;
         _cambiarPlanMiSuscripcionUseCase = cambiarPlanMiSuscripcionUseCase;
         _cancelarMiSuscripcionUseCase = cancelarMiSuscripcionUseCase;
@@ -33,6 +36,13 @@ public class SuscripcionController : ControllerBase
     {
         var result = await _obtenerMiSuscripcionUseCase.ExecuteAsync(User.GetNegocioId(), cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : NotFound(new { error = result.Error });
+    }
+
+    [HttpPost("elegir-plan")]
+    public async Task<IActionResult> ElegirPlan(ElegirPlanRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _elegirPlanUseCase.ExecuteAsync(User.GetNegocioId(), request, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
     }
 
     [HttpPost("suscribirme")]

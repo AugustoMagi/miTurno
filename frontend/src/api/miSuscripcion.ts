@@ -6,6 +6,11 @@ export async function obtenerMiSuscripcion(): Promise<MiSuscripcion> {
   return data
 }
 
+export async function elegirPlan(planId: string): Promise<MiSuscripcion> {
+  const { data } = await apiClient.post<MiSuscripcion>('/api/suscripcion/elegir-plan', { planId })
+  return data
+}
+
 export async function iniciarSuscripcionMercadoPago(): Promise<string> {
   const { data } = await apiClient.post<{ initPoint: string }>('/api/suscripcion/suscribirme')
   return data.initPoint

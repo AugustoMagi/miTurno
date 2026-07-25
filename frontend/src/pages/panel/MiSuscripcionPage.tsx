@@ -4,6 +4,7 @@ import axios from 'axios'
 import {
   cambiarPlanMiSuscripcion,
   cancelarMiSuscripcion,
+  elegirPlan,
   iniciarSuscripcionMercadoPago,
   obtenerMiSuscripcion,
 } from '../../api/miSuscripcion'
@@ -70,6 +71,9 @@ export function MiSuscripcionPage() {
   const [cambiandoPlan, setCambiandoPlan] = useState(false)
   const [cancelando, setCancelando] = useState(false)
 
+  const [planElegidoId, setPlanElegidoId] = useState('')
+  const [eligiendoPlan, setEligiendoPlan] = useState(false)
+
   function cargar() {
     setError(null)
     obtenerMiSuscripcion()
@@ -85,7 +89,10 @@ export function MiSuscripcionPage() {
         setError(extractError(err))
       })
     listarPlanesPublicos()
-      .then(setPlanes)
+      .then((data) => {
+        setPlanes(data)
+        setPlanElegidoId((actual) => actual || (data[0]?.id ?? ''))
+      })
       .catch(() => {})
   }
 
@@ -110,6 +117,21 @@ export function MiSuscripcionPage() {
     } catch (err) {
       setError(extractError(err))
       setSuscribiendo(false)
+    }
+  }
+
+  async function handleElegirPlan() {
+    if (!planElegidoId) return
+    setEligiendoPlan(true)
+    setError(null)
+    try {
+      const nueva = await elegirPlan(planElegidoId)
+      setSuscripcion(nueva)
+      setNuevoPlanId(nueva.planId)
+    } catch (err) {
+      setError(extractError(err))
+    } finally {
+      setEligiendoPlan(false)
     }
   }
 
@@ -157,8 +179,31 @@ export function MiSuscripcionPage() {
       {error && <ErrorBanner message={error} />}
 
       {suscripcion === null ? (
-        <Card>
+        <Card className="flex flex-col gap-3">
           <p className="text-slate-500">Todavía no tenés una suscripción asignada.</p>
+          {planes.length > 0 ? (
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                Elegí un plan
+                <select
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                  value={planElegidoId}
+                  onChange={(event) => setPlanElegidoId(event.target.value)}
+                >
+                  {planes.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.nombre} · ${plan.precio.toLocaleString('es-AR')}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button disabled={eligiendoPlan || !planElegidoId} onClick={handleElegirPlan}>
+                {eligiendoPlan ? 'Eligiendo…' : 'Elegir plan'}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">Todavía no hay planes disponibles.</p>
+          )}
         </Card>
       ) : (
         <>
