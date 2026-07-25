@@ -66,7 +66,7 @@ export function NegociosPage() {
                   </span>
                 </div>
                 <p className="text-sm text-slate-500">
-                  {negocio.email} · miturno.app/{negocio.slug}
+                  {negocio.email} · www.miturno.fun/{negocio.slug}
                 </p>
               </div>
               <div className="flex gap-2">

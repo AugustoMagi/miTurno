@@ -136,7 +136,7 @@ export function RegisterPage() {
                 onBlur={() => setTocado((t) => ({ ...t, slug: true }))}
               />
               {slug && !(tocado.slug && errorSlug) && (
-                <span className="text-xs font-normal text-slate-500">miturno.app/{slug}</span>
+                <span className="text-xs font-normal text-slate-500">www.miturno.fun/{slug}</span>
               )}
               {tocado.slug && <FieldError message={errorSlug} />}
             </label>
