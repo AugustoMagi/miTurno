@@ -56,6 +56,57 @@ function TextoVencimiento({ suscripcion }: { suscripcion: MiSuscripcion }) {
   )
 }
 
+function PlanCard({
+  plan,
+  esElActual,
+  cobroAutomaticoActivo,
+  procesando,
+  onSeleccionar,
+}: {
+  plan: PlanPublico
+  esElActual: boolean
+  cobroAutomaticoActivo: boolean
+  procesando: boolean
+  onSeleccionar: () => void
+}) {
+  return (
+    <div
+      className={`flex h-full flex-col gap-3 rounded-2xl border bg-white p-5 shadow-sm ${
+        esElActual ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-slate-200'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <h3 className="font-semibold text-slate-900">{plan.nombre}</h3>
+        {esElActual && (
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+            Tu plan actual
+          </span>
+        )}
+      </div>
+      <p className="text-slate-900">
+        <span className="text-2xl font-bold">${plan.precio.toLocaleString('es-AR')}</span>
+        <span className="text-sm text-slate-500"> / {PERIODICIDAD_LABEL[plan.periodicidad]}</span>
+      </p>
+      <ul className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
+        <li>Hasta {plan.limiteRecursos} cancha{plan.limiteRecursos === 1 ? '' : 's'}</li>
+        <li>{plan.limiteReservasPorMes} reservas por mes</li>
+      </ul>
+
+      {esElActual && cobroAutomaticoActivo ? (
+        <p className="text-sm text-emerald-700">✓ Cobro automático activo</p>
+      ) : (
+        <Button disabled={procesando} onClick={onSeleccionar} className="mt-auto">
+          {procesando
+            ? 'Redirigiendo…'
+            : esElActual
+              ? 'Suscribirme con Mercado Pago'
+              : 'Cambiar a este plan'}
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export function MiSuscripcionPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -65,22 +116,13 @@ export function MiSuscripcionPage() {
   const [error, setError] = useState<string | null>(null)
   const [vuelvoDeMercadoPago, setVuelvoDeMercadoPago] = useState(false)
 
-  const [suscribiendo, setSuscribiendo] = useState(false)
-
-  const [nuevoPlanId, setNuevoPlanId] = useState('')
-  const [cambiandoPlan, setCambiandoPlan] = useState(false)
+  const [procesandoPlanId, setProcesandoPlanId] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState(false)
-
-  const [planElegidoId, setPlanElegidoId] = useState('')
-  const [eligiendoPlan, setEligiendoPlan] = useState(false)
 
   function cargar() {
     setError(null)
     obtenerMiSuscripcion()
-      .then((data) => {
-        setSuscripcion(data)
-        setNuevoPlanId(data.planId)
-      })
+      .then(setSuscripcion)
       .catch((err) => {
         if (axios.isAxiosError(err) && err.response?.status === 404) {
           setSuscripcion(null)
@@ -89,10 +131,7 @@ export function MiSuscripcionPage() {
         setError(extractError(err))
       })
     listarPlanesPublicos()
-      .then((data) => {
-        setPlanes(data)
-        setPlanElegidoId((actual) => actual || (data[0]?.id ?? ''))
-      })
+      .then(setPlanes)
       .catch(() => {})
   }
 
@@ -108,44 +147,30 @@ export function MiSuscripcionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function handleSuscribirme() {
-    setSuscribiendo(true)
+  // Elige/cambia el plan (según si ya había una suscripción asignada) y, si el plan tiene costo y
+  // todavía no hay cobro automático activo para él, manda directo a pagarlo con Mercado Pago: un
+  // solo click cubre "elegir/cambiar" y "pagar", en vez de dos pasos separados.
+  async function handleSeleccionarPlan(plan: PlanPublico) {
+    setProcesandoPlanId(plan.id)
     setError(null)
     try {
-      const initPoint = await iniciarSuscripcionMercadoPago()
-      window.location.href = initPoint
-    } catch (err) {
-      setError(extractError(err))
-      setSuscribiendo(false)
-    }
-  }
+      let actual: MiSuscripcion | null = suscripcion ?? null
+      if (actual === null) {
+        actual = await elegirPlan(plan.id)
+      } else if (actual.planId !== plan.id) {
+        actual = await cambiarPlanMiSuscripcion(plan.id)
+      }
+      setSuscripcion(actual)
 
-  async function handleElegirPlan() {
-    if (!planElegidoId) return
-    setEligiendoPlan(true)
-    setError(null)
-    try {
-      const nueva = await elegirPlan(planElegidoId)
-      setSuscripcion(nueva)
-      setNuevoPlanId(nueva.planId)
+      if (plan.precio > 0 && !actual.cobroAutomaticoActivo) {
+        const initPoint = await iniciarSuscripcionMercadoPago()
+        window.location.href = initPoint
+        return
+      }
     } catch (err) {
       setError(extractError(err))
     } finally {
-      setEligiendoPlan(false)
-    }
-  }
-
-  async function handleCambiarPlan() {
-    if (!nuevoPlanId) return
-    setCambiandoPlan(true)
-    setError(null)
-    try {
-      const actualizada = await cambiarPlanMiSuscripcion(nuevoPlanId)
-      setSuscripcion(actualizada)
-    } catch (err) {
-      setError(extractError(err))
-    } finally {
-      setCambiandoPlan(false)
+      setProcesandoPlanId(null)
     }
   }
 
@@ -178,113 +203,65 @@ export function MiSuscripcionPage() {
       )}
       {error && <ErrorBanner message={error} />}
 
-      {suscripcion === null ? (
-        <Card className="flex flex-col gap-3">
-          <p className="text-slate-500">Todavía no tenés una suscripción asignada.</p>
-          {planes.length > 0 ? (
-            <div className="flex flex-wrap items-end gap-2">
-              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                Elegí un plan
-                <select
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                  value={planElegidoId}
-                  onChange={(event) => setPlanElegidoId(event.target.value)}
-                >
-                  {planes.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.nombre} · ${plan.precio.toLocaleString('es-AR')}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Button disabled={eligiendoPlan || !planElegidoId} onClick={handleElegirPlan}>
-                {eligiendoPlan ? 'Eligiendo…' : 'Elegir plan'}
-              </Button>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">Todavía no hay planes disponibles.</p>
-          )}
-        </Card>
-      ) : (
-        <>
-          <Card className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-slate-900">{suscripcion.planNombre}</p>
-                <p className="text-sm text-slate-500">
-                  ${suscripcion.planPrecio.toLocaleString('es-AR')} / {PERIODICIDAD_LABEL[suscripcion.periodicidad]}
-                </p>
-              </div>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                  suscripcion.estaActiva ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
-                }`}
-              >
-                {ESTADO_LABEL[suscripcion.estado]}
-              </span>
-            </div>
-            <TextoVencimiento suscripcion={suscripcion} />
-
-            {suscripcion.cobroAutomaticoActivo ? (
-              <p className="text-sm text-emerald-700">
-                ✓ Cobro automático activado: Mercado Pago te cobra solo en cada renovación.
-              </p>
-            ) : suscripcion.estado === EstadoSuscripcion.Cancelada ? null : (
-              <Button disabled={suscribiendo} onClick={handleSuscribirme} className="self-start">
-                {suscribiendo ? 'Redirigiendo…' : 'Suscribirme con Mercado Pago'}
-              </Button>
-            )}
-          </Card>
-
-          {planes.length > 0 && (
-            <Card className="flex flex-col gap-3">
-              <h2 className="font-semibold text-slate-900">Cambiar de plan</h2>
-              <div className="flex flex-wrap items-end gap-2">
-                <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                  Nuevo plan
-                  <select
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                    value={nuevoPlanId}
-                    onChange={(event) => setNuevoPlanId(event.target.value)}
-                  >
-                    {planes.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.nombre} · ${plan.precio.toLocaleString('es-AR')}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <Button
-                  variant="secondary"
-                  disabled={cambiandoPlan || !nuevoPlanId || nuevoPlanId === suscripcion.planId}
-                  onClick={handleCambiarPlan}
-                >
-                  {cambiandoPlan ? 'Cambiando…' : 'Cambiar plan'}
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          {suscripcion.estado !== EstadoSuscripcion.Cancelada && (
-            <Card className="flex flex-col gap-3">
-              <h2 className="font-semibold text-slate-900">Cancelar suscripción</h2>
+      {suscripcion !== null && (
+        <Card className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-slate-900">{suscripcion.planNombre}</p>
               <p className="text-sm text-slate-500">
-                {suscripcion.cobroAutomaticoActivo
-                  ? 'También cancela el cobro automático en Mercado Pago: no te va a cobrar de nuevo.'
-                  : 'Dejás de tener acceso al finalizar el período vigente.'}{' '}
-                Podés volver a suscribirte cuando quieras.
+                ${suscripcion.planPrecio.toLocaleString('es-AR')} / {PERIODICIDAD_LABEL[suscripcion.periodicidad]}
               </p>
-              <button
-                type="button"
-                disabled={cancelando}
-                onClick={handleCancelar}
-                className="self-start rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-              >
-                {cancelando ? 'Cancelando…' : 'Cancelar suscripción'}
-              </button>
-            </Card>
-          )}
-        </>
+            </div>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                suscripcion.estaActiva ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+              }`}
+            >
+              {ESTADO_LABEL[suscripcion.estado]}
+            </span>
+          </div>
+          <TextoVencimiento suscripcion={suscripcion} />
+        </Card>
+      )}
+
+      {planes.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {suscripcion === null && <p className="text-slate-500">Todavía no tenés una suscripción asignada — elegí un plan.</p>}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {planes.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                esElActual={suscripcion !== null && suscripcion.planId === plan.id}
+                cobroAutomaticoActivo={
+                  suscripcion !== null && suscripcion.planId === plan.id && suscripcion.cobroAutomaticoActivo
+                }
+                procesando={procesandoPlanId === plan.id}
+                onSeleccionar={() => handleSeleccionarPlan(plan)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {suscripcion !== null && suscripcion.estado !== EstadoSuscripcion.Cancelada && (
+        <Card className="flex flex-col gap-3">
+          <h2 className="font-semibold text-slate-900">Cancelar suscripción</h2>
+          <p className="text-sm text-slate-500">
+            {suscripcion.cobroAutomaticoActivo
+              ? 'También cancela el cobro automático en Mercado Pago: no te va a cobrar de nuevo.'
+              : 'Dejás de tener acceso al finalizar el período vigente.'}{' '}
+            Podés volver a suscribirte cuando quieras.
+          </p>
+          <button
+            type="button"
+            disabled={cancelando}
+            onClick={handleCancelar}
+            className="self-start rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            {cancelando ? 'Cancelando…' : 'Cancelar suscripción'}
+          </button>
+        </Card>
       )}
     </div>
   )
