@@ -7,8 +7,9 @@ namespace MiTurno.Application.Features.Suscripciones;
 
 /// <summary>
 /// Permite que un negocio sin Suscripcion asignada (ej. registrado antes de que existiera algún
-/// Plan) elija uno por primera vez. Distinto de CambiarPlanMiSuscripcionUseCase, que requiere que
-/// ya exista una Suscripcion.
+/// Plan) elija uno por primera vez, arrancando el mismo período de prueba que recibe cualquier
+/// alta nueva. Distinto de CambiarPlanMiSuscripcionUseCase, que requiere que ya exista una
+/// Suscripcion.
 /// </summary>
 public class ElegirPlanUseCase
 {
@@ -37,7 +38,7 @@ public class ElegirPlanUseCase
         if (plan is null || !plan.Activo)
             return Result.Failure<MiSuscripcionResponse>("Plan no encontrado.");
 
-        var suscripcion = Suscripcion.Elegir(negocioId, plan);
+        var suscripcion = Suscripcion.IniciarPrueba(negocioId, plan);
         await _suscripcionRepository.AddAsync(suscripcion, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

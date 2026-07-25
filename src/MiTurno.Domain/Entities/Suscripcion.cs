@@ -44,29 +44,6 @@ public class Suscripcion : BaseEntity
     }
 
     /// <summary>
-    /// El dueño elige un plan por primera vez para un negocio que nunca tuvo Suscripcion asignada
-    /// (ej. negocios registrados antes de que existiera algún Plan). A diferencia de IniciarPrueba,
-    /// no otorga período de prueba: si el plan tiene costo arranca sin acceso hasta que pague vía
-    /// Suscribirme(); si es gratuito arranca activa directamente porque no hay nada que cobrar.
-    /// </summary>
-    public static Suscripcion Elegir(Guid negocioId, Plan plan)
-    {
-        var ahora = DateTime.UtcNow;
-        var esGratis = plan.Precio <= 0;
-        return new Suscripcion
-        {
-            NegocioId = negocioId,
-            PlanId = plan.Id,
-            Plan = plan,
-            Estado = esGratis ? EstadoSuscripcion.Activa : EstadoSuscripcion.Vencida,
-            FechaInicio = ahora,
-            FechaProximoVencimiento = esGratis
-                ? (plan.Periodicidad == Periodicidad.Mensual ? ahora.AddMonths(1) : ahora.AddYears(1))
-                : ahora
-        };
-    }
-
-    /// <summary>
     /// Determina si el negocio conserva acceso al sistema (prueba o pago vigente).
     /// De esto depende si su link público de reservas sigue expuesto.
     /// </summary>
