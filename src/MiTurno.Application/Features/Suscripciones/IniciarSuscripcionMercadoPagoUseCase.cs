@@ -47,7 +47,18 @@ public class IniciarSuscripcionMercadoPagoUseCase
             return Result.Failure<IniciarSuscripcionMercadoPagoResponse>("Este plan no requiere cobro.");
 
         if (suscripcion.MercadoPagoPreapprovalId is not null)
-            return Result.Failure<IniciarSuscripcionMercadoPagoResponse>("Ya tenés el cobro automático de Mercado Pago activado.");
+        {
+            // Un Preapproval que el negocio nunca autorizó (o canceló desde su propia cuenta de MP)
+            // puede quedar cancelado del lado de Mercado Pago sin que el webhook nos avise: en vez
+            // de bloquear para siempre, reconsultamos y si ya está muerto lo soltamos y seguimos.
+            var estadoResult = await _pagoRecurrenteGateway.ObtenerPreapprovalAsync(
+                _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
+
+            if (!estadoResult.IsSuccess || estadoResult.Value.Status != "cancelled")
+                return Result.Failure<IniciarSuscripcionMercadoPagoResponse>("Ya tenés el cobro automático de Mercado Pago activado.");
+
+            suscripcion.QuitarPreapproval();
+        }
 
         var negocio = await _negocioRepository.GetByIdAsync(negocioId, cancellationToken);
         if (negocio is null)

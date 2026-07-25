@@ -1,4 +1,5 @@
 using MiTurno.Application.Common.Interfaces;
+using MiTurno.Application.Common.Models;
 using MiTurno.Application.Features.Admin.Suscripciones;
 using MiTurno.Domain.Entities;
 using MiTurno.Domain.Enums;
@@ -44,5 +45,25 @@ public class CancelarSuscripcionUseCaseTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be("Suscripción no encontrada.");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConPreapprovalYaCanceladoEnMercadoPago_CancelaLocalmenteSinReintentarEnMercadoPago()
+    {
+        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        var plan = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
+        var suscripcion = Suscripcion.IniciarPrueba(negocio.Id, plan);
+        suscripcion.AsignarPreapproval("preapproval-1");
+        _suscripcionRepository.GetByIdAsync(suscripcion.Id).Returns(suscripcion);
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-1")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-1", "cancelled", null)));
+
+        var result = await _useCase.ExecuteAsync(suscripcion.Id);
+
+        result.IsSuccess.Should().BeTrue();
+        suscripcion.Estado.Should().Be(EstadoSuscripcion.Cancelada);
+        suscripcion.MercadoPagoPreapprovalId.Should().BeNull();
+        await _pagoRecurrenteGateway.DidNotReceive().CancelarPreapprovalAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

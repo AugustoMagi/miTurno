@@ -90,11 +90,30 @@ public class IniciarSuscripcionMercadoPagoUseCaseTests
     {
         var (negocio, suscripcion) = EscenarioValido();
         suscripcion.AsignarPreapproval("preapproval-existente");
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-existente")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-existente", "authorized", null)));
 
         var result = await _useCase.ExecuteAsync(negocio.Id, WebhookBaseUrl);
 
         result.IsFailure.Should().BeTrue();
         await _pagoRecurrenteGateway.DidNotReceive().CrearPreapprovalAsync(Arg.Any<CrearPreapprovalRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConPreapprovalPrevioYaCanceladoEnMercadoPago_LoSueltaYCreaUnoNuevo()
+    {
+        var (negocio, suscripcion) = EscenarioValido();
+        suscripcion.AsignarPreapproval("preapproval-viejo");
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-viejo")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-viejo", "cancelled", null)));
+        _pagoRecurrenteGateway.CrearPreapprovalAsync(Arg.Any<CrearPreapprovalRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new PreapprovalCreadoResult("preapproval-nuevo", "https://mp.test/suscribirme/preapproval-nuevo")));
+
+        var result = await _useCase.ExecuteAsync(negocio.Id, WebhookBaseUrl);
+
+        result.IsSuccess.Should().BeTrue();
+        suscripcion.MercadoPagoPreapprovalId.Should().Be("preapproval-nuevo");
+        await _pagoRecurrenteGateway.Received(1).CrearPreapprovalAsync(Arg.Any<CrearPreapprovalRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

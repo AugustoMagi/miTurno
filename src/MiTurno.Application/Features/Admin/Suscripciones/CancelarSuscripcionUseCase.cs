@@ -3,7 +3,11 @@ using MiTurno.Application.Common.Models;
 
 namespace MiTurno.Application.Features.Admin.Suscripciones;
 
-/// <summary>Igual criterio que CancelarMiSuscripcionUseCase: si hay cobro automático de Mercado Pago, se cancela primero del lado de Mercado Pago.</summary>
+/// <summary>
+/// Igual criterio que CancelarMiSuscripcionUseCase: si hay cobro automático de Mercado Pago, se
+/// cancela primero del lado de Mercado Pago — salvo que ya esté cancelado ahí (Mercado Pago
+/// rechaza cancelar un Preapproval ya cancelado, y eso no debe bloquear la baja local).
+/// </summary>
 public class CancelarSuscripcionUseCase
 {
     private readonly ISuscripcionRepository _suscripcionRepository;
@@ -31,10 +35,17 @@ public class CancelarSuscripcionUseCase
 
         if (suscripcion.MercadoPagoPreapprovalId is not null)
         {
-            var cancelacionResult = await _pagoRecurrenteGateway.CancelarPreapprovalAsync(
+            var estadoResult = await _pagoRecurrenteGateway.ObtenerPreapprovalAsync(
                 _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
-            if (cancelacionResult.IsFailure)
-                return Result.Failure(cancelacionResult.Error!);
+            var yaCanceladaEnMercadoPago = estadoResult.IsSuccess && estadoResult.Value.Status == "cancelled";
+
+            if (!yaCanceladaEnMercadoPago)
+            {
+                var cancelacionResult = await _pagoRecurrenteGateway.CancelarPreapprovalAsync(
+                    _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
+                if (cancelacionResult.IsFailure)
+                    return Result.Failure(cancelacionResult.Error!);
+            }
 
             suscripcion.QuitarPreapproval();
         }
