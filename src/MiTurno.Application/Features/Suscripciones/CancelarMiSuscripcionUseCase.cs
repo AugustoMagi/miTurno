@@ -6,7 +6,10 @@ namespace MiTurno.Application.Features.Suscripciones;
 /// <summary>
 /// Si la suscripción tiene el cobro automático de Mercado Pago activado, primero cancela la
 /// Preapproval del lado de Mercado Pago: si eso falla, no cancela localmente (para no dejar al
-/// negocio con el acceso cortado mientras Mercado Pago le sigue cobrando igual).
+/// negocio con el acceso cortado mientras Mercado Pago le sigue cobrando igual). Si la Preapproval
+/// ya está cancelada en Mercado Pago (ej. nunca se llegó a autorizar, o el negocio la canceló desde
+/// su propia cuenta), no hay nada que cobre: se salta el intento de cancelarla ahí, porque Mercado
+/// Pago rechaza cancelar una Preapproval que ya está cancelada y eso bloquearía la baja local sin motivo.
 /// </summary>
 public class CancelarMiSuscripcionUseCase
 {
@@ -35,10 +38,17 @@ public class CancelarMiSuscripcionUseCase
 
         if (suscripcion.MercadoPagoPreapprovalId is not null)
         {
-            var cancelacionResult = await _pagoRecurrenteGateway.CancelarPreapprovalAsync(
+            var estadoResult = await _pagoRecurrenteGateway.ObtenerPreapprovalAsync(
                 _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
-            if (cancelacionResult.IsFailure)
-                return Result.Failure(cancelacionResult.Error!);
+            var yaCanceladaEnMercadoPago = estadoResult.IsSuccess && estadoResult.Value.Status == "cancelled";
+
+            if (!yaCanceladaEnMercadoPago)
+            {
+                var cancelacionResult = await _pagoRecurrenteGateway.CancelarPreapprovalAsync(
+                    _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
+                if (cancelacionResult.IsFailure)
+                    return Result.Failure(cancelacionResult.Error!);
+            }
 
             suscripcion.QuitarPreapproval();
         }
