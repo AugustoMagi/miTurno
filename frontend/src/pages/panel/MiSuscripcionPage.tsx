@@ -119,9 +119,8 @@ export function MiSuscripcionPage() {
   const [procesandoPlanId, setProcesandoPlanId] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState(false)
 
-  function cargar() {
-    setError(null)
-    obtenerMiSuscripcion()
+  function cargarSuscripcion() {
+    return obtenerMiSuscripcion()
       .then(setSuscripcion)
       .catch((err) => {
         if (axios.isAxiosError(err) && err.response?.status === 404) {
@@ -130,6 +129,11 @@ export function MiSuscripcionPage() {
         }
         setError(extractError(err))
       })
+  }
+
+  function cargar() {
+    setError(null)
+    cargarSuscripcion()
     listarPlanesPublicos()
       .then(setPlanes)
       .catch(() => {})
@@ -146,6 +150,40 @@ export function MiSuscripcionPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Mientras esperamos que el webhook confirme el primer cobro, la suscripción sigue mostrando el
+  // estado viejo (ej. "Cancelada" si se venía de cancelar y volver a suscribir). Sondeamos unas
+  // cuantas veces hasta ver que el estado cambió, en vez de dejar la card desactualizada para siempre.
+  useEffect(() => {
+    if (!vuelvoDeMercadoPago) return
+
+    let cancelado = false
+    let intentos = 0
+
+    async function sondear() {
+      intentos += 1
+      try {
+        const actual = await obtenerMiSuscripcion()
+        if (cancelado) return
+        setSuscripcion(actual)
+        if (actual.estado !== EstadoSuscripcion.Cancelada) {
+          setVuelvoDeMercadoPago(false)
+          return
+        }
+      } catch {
+        // error transitorio: seguimos sondeando, no cortamos por esto
+      }
+      if (!cancelado && intentos < 15) {
+        setTimeout(sondear, 4000)
+      }
+    }
+
+    const timeoutId = setTimeout(sondear, 4000)
+    return () => {
+      cancelado = true
+      clearTimeout(timeoutId)
+    }
+  }, [vuelvoDeMercadoPago])
 
   // Elige/cambia el plan (según si ya había una suscripción asignada) y, si el plan tiene costo y
   // todavía no hay cobro automático activo para él, manda directo a pagarlo con Mercado Pago: un
@@ -244,7 +282,7 @@ export function MiSuscripcionPage() {
         </div>
       )}
 
-      {suscripcion !== null && suscripcion.estado !== EstadoSuscripcion.Cancelada && (
+      {suscripcion !== null && (suscripcion.estado !== EstadoSuscripcion.Cancelada || suscripcion.cobroAutomaticoActivo) && (
         <Card className="flex flex-col gap-3">
           <h2 className="font-semibold text-slate-900">Cancelar suscripción</h2>
           <p className="text-sm text-slate-500">
