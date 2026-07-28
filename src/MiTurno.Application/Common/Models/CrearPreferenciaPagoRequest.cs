@@ -10,4 +10,5 @@ public record CrearPreferenciaPagoRequest(
     Guid ExternalReferenceId,
     string Descripcion,
     decimal Monto,
-    string NotificationUrl);
+    string NotificationUrl,
+    string BackUrl);

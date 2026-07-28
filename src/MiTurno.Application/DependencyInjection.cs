@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<ListarTurnosDisponiblesUseCase>();
         services.AddScoped<CrearReservaUseCase>();
         services.AddScoped<CancelarReservaClienteUseCase>();
+        services.AddScoped<ObtenerReservaClienteUseCase>();
         services.AddScoped<ProcesarNotificacionPagoMercadoPagoUseCase>();
 
         services.AddScoped<ListarReservasUseCase>();

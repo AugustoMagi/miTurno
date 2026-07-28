@@ -13,6 +13,7 @@ public class PublicController : ControllerBase
     private readonly ListarTurnosDisponiblesUseCase _listarTurnosDisponiblesUseCase;
     private readonly CrearReservaUseCase _crearReservaUseCase;
     private readonly CancelarReservaClienteUseCase _cancelarReservaClienteUseCase;
+    private readonly ObtenerReservaClienteUseCase _obtenerReservaClienteUseCase;
     private readonly ProcesarNotificacionPagoMercadoPagoUseCase _procesarNotificacionPagoMercadoPagoUseCase;
 
     public PublicController(
@@ -20,12 +21,14 @@ public class PublicController : ControllerBase
         ListarTurnosDisponiblesUseCase listarTurnosDisponiblesUseCase,
         CrearReservaUseCase crearReservaUseCase,
         CancelarReservaClienteUseCase cancelarReservaClienteUseCase,
+        ObtenerReservaClienteUseCase obtenerReservaClienteUseCase,
         ProcesarNotificacionPagoMercadoPagoUseCase procesarNotificacionPagoMercadoPagoUseCase)
     {
         _obtenerNegocioPublicoUseCase = obtenerNegocioPublicoUseCase;
         _listarTurnosDisponiblesUseCase = listarTurnosDisponiblesUseCase;
         _crearReservaUseCase = crearReservaUseCase;
         _cancelarReservaClienteUseCase = cancelarReservaClienteUseCase;
+        _obtenerReservaClienteUseCase = obtenerReservaClienteUseCase;
         _procesarNotificacionPagoMercadoPagoUseCase = procesarNotificacionPagoMercadoPagoUseCase;
     }
 
@@ -51,6 +54,13 @@ public class PublicController : ControllerBase
         var webhookBaseUrl = $"{Request.Scheme}://{Request.Host}";
         var result = await _crearReservaUseCase.ExecuteAsync(slug, recursoId, request, webhookBaseUrl, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
+
+    [HttpGet("{slug}/reservas/{reservaId:guid}")]
+    public async Task<IActionResult> ObtenerReserva(string slug, Guid reservaId, CancellationToken cancellationToken)
+    {
+        var result = await _obtenerReservaClienteUseCase.ExecuteAsync(slug, reservaId, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : NotFound(new { error = result.Error });
     }
 
     [HttpPatch("{slug}/reservas/{reservaId:guid}/cancelar")]

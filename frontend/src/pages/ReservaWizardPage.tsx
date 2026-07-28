@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { cancelarReservaCliente, crearReserva, getNegocioPublico, getTurnosDisponibles } from '../api/negociosPublicos'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  cancelarReservaCliente,
+  crearReserva,
+  getNegocioPublico,
+  getReservaCliente,
+  getTurnosDisponibles,
+} from '../api/negociosPublicos'
 import { extractError } from '../api/client'
+import { EstadoReserva } from '../types/negocio'
 import type { RecursoPublico, Reserva, TurnoDisponible } from '../types/negocio'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
@@ -28,6 +35,8 @@ function esHoraEnPunto(horaHms: string): boolean {
 
 export function ReservaWizardPage() {
   const { slug, recursoId } = useParams<{ slug: string; recursoId: string }>()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const [recurso, setRecurso] = useState<RecursoPublico | null>(null)
   const [negocioError, setNegocioError] = useState<string | null>(null)
@@ -49,6 +58,61 @@ export function ReservaWizardPage() {
   const [reserva, setReserva] = useState<Reserva | null>(null)
   const [cancelando, setCancelando] = useState(false)
   const [cancelada, setCancelada] = useState(false)
+  const [vuelvoDeMercadoPago, setVuelvoDeMercadoPago] = useState(false)
+
+  // Mercado Pago vuelve acá (con reservaId en la URL) después de que el cliente paga. La reserva
+  // ya se había creado antes de irse a pagar, así que en vez de mostrar el wizard desde cero,
+  // recuperamos su estado actual y saltamos directo a la card de resultado.
+  useEffect(() => {
+    const reservaId = searchParams.get('reservaId')
+    if (!slug || !recursoId || !reservaId) return
+
+    if (searchParams.get('mp') === 'vuelta') {
+      setVuelvoDeMercadoPago(true)
+      navigate(`/${slug}/reservar/${recursoId}?reservaId=${reservaId}`, { replace: true })
+    }
+
+    getReservaCliente(slug, reservaId)
+      .then(setReserva)
+      .catch((err) => setSubmitError(extractError(err)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, recursoId])
+
+  // La confirmación del pago llega por webhook de forma asíncrona: si volvemos de Mercado Pago y
+  // la reserva sigue Pendiente, sondeamos unas cuantas veces en vez de dejar la pantalla mostrando
+  // "pagá de nuevo" para un pago que ya se hizo.
+  useEffect(() => {
+    const reservaId = searchParams.get('reservaId')
+    if (!vuelvoDeMercadoPago || !slug || !reservaId) return
+
+    let cancelado = false
+    let intentos = 0
+
+    async function sondear() {
+      intentos += 1
+      try {
+        const actual = await getReservaCliente(slug!, reservaId!)
+        if (cancelado) return
+        setReserva(actual)
+        if (actual.estado !== EstadoReserva.Pendiente) {
+          setVuelvoDeMercadoPago(false)
+          return
+        }
+      } catch {
+        // error transitorio: seguimos sondeando, no cortamos por esto
+      }
+      if (!cancelado && intentos < 15) {
+        setTimeout(sondear, 4000)
+      }
+    }
+
+    const timeoutId = setTimeout(sondear, 4000)
+    return () => {
+      cancelado = true
+      clearTimeout(timeoutId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vuelvoDeMercadoPago, slug])
 
   useEffect(() => {
     if (!slug || !recursoId) return
@@ -125,7 +189,15 @@ export function ReservaWizardPage() {
       <div className="mx-auto flex max-w-md flex-col gap-6">
         <Card className="flex flex-col gap-4">
           <h1 className="text-xl font-semibold text-slate-900">
-            {cancelada ? 'Reserva cancelada' : '¡Reserva creada!'}
+            {cancelada
+              ? 'Reserva cancelada'
+              : reserva.estado === EstadoReserva.Confirmada
+                ? '¡Reserva confirmada!'
+                : reserva.estado === EstadoReserva.Cancelada
+                  ? 'El pago no se acreditó'
+                  : vuelvoDeMercadoPago
+                    ? 'Confirmando tu pago…'
+                    : '¡Reserva creada!'}
           </h1>
           <dl className="grid grid-cols-2 gap-y-2 text-sm">
             <dt className="text-slate-500">Recurso</dt>
@@ -144,6 +216,20 @@ export function ReservaWizardPage() {
 
           {cancelada ? (
             <p className="text-sm text-slate-500">Tu reserva fue cancelada correctamente.</p>
+          ) : reserva.estado === EstadoReserva.Confirmada ? (
+            <p className="text-sm text-emerald-700">
+              Tu pago se acreditó y el turno quedó confirmado. Te esperamos.
+            </p>
+          ) : reserva.estado === EstadoReserva.Cancelada ? (
+            <p className="text-sm text-slate-500">
+              El pago no se pudo acreditar y el turno fue liberado. Podés volver a intentar la
+              reserva desde el negocio.
+            </p>
+          ) : vuelvoDeMercadoPago ? (
+            <p className="text-sm text-slate-500">
+              Estamos confirmando tu pago con Mercado Pago. Puede tardar unos minutos en
+              reflejarse acá — no hace falta que vuelvas a pagar.
+            </p>
           ) : reserva.linkPago ? (
             <p className="text-sm text-slate-500">
               Confirmá tu turno completando el pago. Una vez acreditado, tu reserva queda
@@ -170,7 +256,7 @@ export function ReservaWizardPage() {
 
           {submitError && <ErrorBanner message={submitError} />}
 
-          {!cancelada && (
+          {!cancelada && reserva.estado !== EstadoReserva.Cancelada && (
             <div className="flex flex-col gap-2 sm:flex-row">
               {reserva.linkPago && (
                 <Button className="flex-1" onClick={() => (window.location.href = reserva.linkPago!)}>

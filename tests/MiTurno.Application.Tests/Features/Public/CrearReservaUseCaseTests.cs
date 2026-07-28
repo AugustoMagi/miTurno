@@ -19,6 +19,7 @@ public class CrearReservaUseCaseTests
     private readonly IClienteRepository _clienteRepository = Substitute.For<IClienteRepository>();
     private readonly IConfiguracionPagoRepository _configuracionPagoRepository = Substitute.For<IConfiguracionPagoRepository>();
     private readonly IPagoGateway _pagoGateway = Substitute.For<IPagoGateway>();
+    private readonly IFrontendConfiguracion _frontendConfiguracion = Substitute.For<IFrontendConfiguracion>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
@@ -29,10 +30,11 @@ public class CrearReservaUseCaseTests
     public CrearReservaUseCaseTests()
     {
         _clock.Now.Returns(DateTime.UtcNow);
+        _frontendConfiguracion.BaseUrl.Returns("https://miturno.test");
         var resolverNegocioPublicoService = new ResolverNegocioPublicoService(_negocioRepository, _suscripcionRepository);
         _useCase = new CrearReservaUseCase(
             new CrearReservaValidator(), resolverNegocioPublicoService, _recursoRepository, _reservaRepository,
-            _clienteRepository, _configuracionPagoRepository, _pagoGateway, _unitOfWork, _clock);
+            _clienteRepository, _configuracionPagoRepository, _pagoGateway, _frontendConfiguracion, _unitOfWork, _clock);
     }
 
     private (Negocio negocio, Recurso recurso) EscenarioValido()
@@ -273,7 +275,10 @@ public class CrearReservaUseCaseTests
                 r!.AccessToken == "TEST-ACCESS-TOKEN" &&
                 r.NotificationUrl.StartsWith(WebhookBaseUrl) &&
                 r.NotificationUrl.Contains($"{negocio.Slug}/reservas/") &&
-                r.NotificationUrl.EndsWith("/pago/webhook/mercadopago")),
+                r.NotificationUrl.EndsWith("/pago/webhook/mercadopago") &&
+                r.BackUrl.StartsWith("https://miturno.test") &&
+                r.BackUrl.Contains($"{negocio.Slug}/reservar/{recurso.Id}") &&
+                r.BackUrl.Contains("mp=vuelta")),
             Arg.Any<CancellationToken>());
     }
 

@@ -24,6 +24,7 @@ public class CrearReservaUseCase
     private readonly IClienteRepository _clienteRepository;
     private readonly IConfiguracionPagoRepository _configuracionPagoRepository;
     private readonly IPagoGateway _pagoGateway;
+    private readonly IFrontendConfiguracion _frontendConfiguracion;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
@@ -35,6 +36,7 @@ public class CrearReservaUseCase
         IClienteRepository clienteRepository,
         IConfiguracionPagoRepository configuracionPagoRepository,
         IPagoGateway pagoGateway,
+        IFrontendConfiguracion frontendConfiguracion,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
@@ -45,6 +47,7 @@ public class CrearReservaUseCase
         _clienteRepository = clienteRepository;
         _configuracionPagoRepository = configuracionPagoRepository;
         _pagoGateway = pagoGateway;
+        _frontendConfiguracion = frontendConfiguracion;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -147,10 +150,11 @@ public class CrearReservaUseCase
 
         var notificationUrl =
             $"{webhookBaseUrl}/api/public/negocios/{slug}/reservas/{reserva.Id}/pago/webhook/mercadopago";
+        var backUrl = $"{_frontendConfiguracion.BaseUrl}/{slug}/reservar/{recurso.Id}?reservaId={reserva.Id}&mp=vuelta";
 
         var preferenciaResult = await _pagoGateway.CrearPreferenciaAsync(
             new CrearPreferenciaPagoRequest(
-                configuracionPago.AccessToken, reserva.Id, $"Turno en {recurso.Nombre}", reserva.PrecioTotal, notificationUrl),
+                configuracionPago.AccessToken, reserva.Id, $"Turno en {recurso.Nombre}", reserva.PrecioTotal, notificationUrl, backUrl),
             cancellationToken);
 
         return preferenciaResult.IsSuccess

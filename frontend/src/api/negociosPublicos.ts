@@ -33,3 +33,8 @@ export async function crearReserva(
 export async function cancelarReservaCliente(slug: string, reservaId: string): Promise<void> {
   await apiClient.patch(`/api/public/negocios/${slug}/reservas/${reservaId}/cancelar`)
 }
+
+export async function getReservaCliente(slug: string, reservaId: string): Promise<Reserva> {
+  const { data } = await apiClient.get<Reserva>(`/api/public/negocios/${slug}/reservas/${reservaId}`)
+  return data
+}
