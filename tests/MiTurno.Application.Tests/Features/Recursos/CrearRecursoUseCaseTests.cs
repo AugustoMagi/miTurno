@@ -1,4 +1,5 @@
 using MiTurno.Application.Common.Interfaces;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Recursos;
 using MiTurno.Application.Features.Recursos.Dtos;
 using MiTurno.Domain.Entities;
@@ -16,7 +17,8 @@ public class CrearRecursoUseCaseTests
 
     public CrearRecursoUseCaseTests()
     {
-        _useCase = new CrearRecursoUseCase(new CrearRecursoValidator(), _recursoRepository, _suscripcionRepository, _unitOfWork);
+        var validarLimiteRecursosService = new ValidarLimiteRecursosService(_recursoRepository, _suscripcionRepository);
+        _useCase = new CrearRecursoUseCase(new CrearRecursoValidator(), _recursoRepository, validarLimiteRecursosService, _unitOfWork);
     }
 
     [Fact]

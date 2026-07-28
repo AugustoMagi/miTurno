@@ -1,6 +1,7 @@
 using FluentValidation;
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Recursos.Dtos;
 using MiTurno.Domain.Entities;
 using MiTurno.Domain.Exceptions;
@@ -12,18 +13,18 @@ public class CrearRecursoUseCase
 {
     private readonly IValidator<CrearRecursoRequest> _validator;
     private readonly IRecursoRepository _recursoRepository;
-    private readonly ISuscripcionRepository _suscripcionRepository;
+    private readonly ValidarLimiteRecursosService _validarLimiteRecursosService;
     private readonly IUnitOfWork _unitOfWork;
 
     public CrearRecursoUseCase(
         IValidator<CrearRecursoRequest> validator,
         IRecursoRepository recursoRepository,
-        ISuscripcionRepository suscripcionRepository,
+        ValidarLimiteRecursosService validarLimiteRecursosService,
         IUnitOfWork unitOfWork)
     {
         _validator = validator;
         _recursoRepository = recursoRepository;
-        _suscripcionRepository = suscripcionRepository;
+        _validarLimiteRecursosService = validarLimiteRecursosService;
         _unitOfWork = unitOfWork;
     }
 
@@ -35,21 +36,9 @@ public class CrearRecursoUseCase
             return Result.Failure<RecursoResponse>(
                 string.Join(" ", validation.Errors.Select(e => e.ErrorMessage)));
 
-        // Un negocio sin Suscripcion asignada (retrocompatibilidad con negocios viejos) no tiene
-        // límite de plan que chequear. Se cuentan solo los recursos activos: uno desactivado no
-        // ocupa lugar, así que desactivar uno libera espacio para crear otro sin cambiar de plan.
-        var suscripcion = await _suscripcionRepository.GetByNegocioIdAsync(negocioId, cancellationToken);
-        if (suscripcion is not null)
-        {
-            var recursos = await _recursoRepository.GetByNegocioIdAsync(negocioId, cancellationToken);
-            var recursosActivos = recursos.Count(r => r.Activo);
-            if (recursosActivos >= suscripcion.Plan.LimiteRecursos)
-            {
-                var limite = suscripcion.Plan.LimiteRecursos;
-                return Result.Failure<RecursoResponse>(
-                    $"Alcanzaste el límite de {limite} cancha{(limite == 1 ? "" : "s")} de tu plan actual ({suscripcion.Plan.Nombre}). Cambiá de plan en \"Mi suscripción\" para agregar más.");
-            }
-        }
+        var limiteResult = await _validarLimiteRecursosService.ValidarAsync(negocioId, cancellationToken);
+        if (limiteResult.IsFailure)
+            return Result.Failure<RecursoResponse>(limiteResult.Error!);
 
         try
         {

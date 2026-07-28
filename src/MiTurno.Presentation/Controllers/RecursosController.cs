@@ -63,7 +63,7 @@ public class RecursosController : ControllerBase
     public async Task<IActionResult> Activar(Guid id, CancellationToken cancellationToken)
     {
         var result = await _cambiarEstadoRecursoUseCase.ExecuteAsync(User.GetNegocioId(), id, activar: true, cancellationToken);
-        return result.IsSuccess ? NoContent() : NotFound(new { error = result.Error });
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error });
     }
 
     [HttpPatch("{id:guid}/desactivar")]

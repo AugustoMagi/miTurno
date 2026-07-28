@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         services.AddScoped<ResolverNegocioPublicoService>();
+        services.AddScoped<ValidarLimiteRecursosService>();
 
         services.AddScoped<RegistrarNegocioUseCase>();
         services.AddScoped<LoginUseCase>();
