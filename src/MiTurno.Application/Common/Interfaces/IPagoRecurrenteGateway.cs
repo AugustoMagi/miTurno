@@ -24,4 +24,13 @@ public interface IPagoRecurrenteGateway
 
     Task<Result<CargoRecurrenteResult>> ObtenerCargoRecurrenteAsync(
         string accessToken, string pagoExternoId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Id del cargo procesado/aprobado más reciente de una Preapproval, o null si todavía no tiene
+    /// ninguno. Se usa para reconciliar cuando el webhook de Mercado Pago no llegó (ver
+    /// ObtenerMiSuscripcionUseCase): en vez de depender solo de la notificación, se puede
+    /// repreguntar y procesar el cargo como si el webhook hubiera llegado recién.
+    /// </summary>
+    Task<Result<string?>> BuscarUltimoCargoIdAsync(
+        string accessToken, string preapprovalId, CancellationToken cancellationToken = default);
 }

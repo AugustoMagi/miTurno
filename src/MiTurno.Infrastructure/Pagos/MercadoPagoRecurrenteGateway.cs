@@ -148,7 +148,7 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
                     $"Mercado Pago no devolvió el cargo {pagoExternoId} ({(int)response.StatusCode}).");
 
             var body = await response.Content.ReadFromJsonAsync<CargoRecurrenteResponse>(cancellationToken);
-            if (string.IsNullOrEmpty(body?.Id) || string.IsNullOrEmpty(body.PreapprovalId) || body.Status is null)
+            if (body?.Id is null || string.IsNullOrEmpty(body.PreapprovalId) || body.Status is null)
                 return Result.Failure<CargoRecurrenteResult>("Respuesta inesperada de Mercado Pago al consultar el cargo.");
 
             var estado = body.Status switch
@@ -158,11 +158,39 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
                 _ => EstadoPagoExterno.Pendiente
             };
 
-            return Result.Success(new CargoRecurrenteResult(body.Id, body.PreapprovalId, body.TransactionAmount, estado));
+            return Result.Success(new CargoRecurrenteResult(body.Id.Value.ToString(), body.PreapprovalId, body.TransactionAmount, estado));
         }
         catch (HttpRequestException ex)
         {
             return Result.Failure<CargoRecurrenteResult>($"No se pudo contactar a Mercado Pago: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<string?>> BuscarUltimoCargoIdAsync(
+        string accessToken, string preapprovalId, CancellationToken cancellationToken = default)
+    {
+        using var httpRequest = new HttpRequestMessage(
+            HttpMethod.Get, $"{BaseUrl}/authorized_payments/search?preapproval_id={preapprovalId}");
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        try
+        {
+            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return Result.Failure<string?>(
+                    $"Mercado Pago no devolvió los cargos de la suscripción {preapprovalId} ({(int)response.StatusCode}).");
+
+            var body = await response.Content.ReadFromJsonAsync<AuthorizedPaymentsSearchResponse>(cancellationToken);
+            var ultimoProcesado = body?.Results?
+                .Where(r => r.Status is "processed" or "approved")
+                .OrderByDescending(r => r.DateCreated)
+                .FirstOrDefault();
+
+            return Result.Success(ultimoProcesado?.Id?.ToString());
+        }
+        catch (HttpRequestException ex)
+        {
+            return Result.Failure<string?>($"No se pudo contactar a Mercado Pago: {ex.Message}");
         }
     }
 
@@ -178,9 +206,16 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         [property: JsonPropertyName("sandbox_init_point")] string? SandboxInitPoint,
         [property: JsonPropertyName("external_reference")] string? ExternalReference);
 
+    // Mercado Pago devuelve el "id" de un authorized_payment como número JSON (no como string, a
+    // diferencia del id de la Preapproval que sí es un string hex) — de ahí el long? acá.
     private record CargoRecurrenteResponse(
-        string? Id,
+        long? Id,
         string? Status,
         [property: JsonPropertyName("preapproval_id")] string? PreapprovalId,
         [property: JsonPropertyName("transaction_amount")] decimal TransactionAmount);
+
+    private record AuthorizedPaymentsSearchResponse(List<AuthorizedPaymentItem>? Results);
+
+    private record AuthorizedPaymentItem(
+        long? Id, string? Status, [property: JsonPropertyName("date_created")] DateTimeOffset? DateCreated);
 }
