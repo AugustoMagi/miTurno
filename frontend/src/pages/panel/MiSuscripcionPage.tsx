@@ -265,6 +265,10 @@ export function MiSuscripcionPage() {
       {planes.length > 0 && (
         <div className="flex flex-col gap-3">
           {suscripcion === null && <p className="text-slate-500">Todavía no tenés una suscripción asignada — elegí un plan.</p>}
+          <p className="text-xs text-slate-400">
+            Los pagos con Mercado Pago pueden tardar unos minutos en reflejarse acá — no hace falta
+            que vuelvas a pagar si ya lo hiciste.
+          </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {planes.map((plan) => (
               <PlanCard
