@@ -1,5 +1,6 @@
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Admin.Suscripciones.Dtos;
 
 namespace MiTurno.Application.Features.Admin.Suscripciones;
@@ -9,6 +10,7 @@ public class CambiarPlanSuscripcionUseCase
     private readonly ISuscripcionRepository _suscripcionRepository;
     private readonly IPlanRepository _planRepository;
     private readonly INegocioRepository _negocioRepository;
+    private readonly ValidarLimiteRecursosService _validarLimiteRecursosService;
     private readonly IPlataformaPagoConfiguracion _plataformaPagoConfiguracion;
     private readonly IPagoRecurrenteGateway _pagoRecurrenteGateway;
     private readonly IUnitOfWork _unitOfWork;
@@ -17,6 +19,7 @@ public class CambiarPlanSuscripcionUseCase
         ISuscripcionRepository suscripcionRepository,
         IPlanRepository planRepository,
         INegocioRepository negocioRepository,
+        ValidarLimiteRecursosService validarLimiteRecursosService,
         IPlataformaPagoConfiguracion plataformaPagoConfiguracion,
         IPagoRecurrenteGateway pagoRecurrenteGateway,
         IUnitOfWork unitOfWork)
@@ -24,6 +27,7 @@ public class CambiarPlanSuscripcionUseCase
         _suscripcionRepository = suscripcionRepository;
         _planRepository = planRepository;
         _negocioRepository = negocioRepository;
+        _validarLimiteRecursosService = validarLimiteRecursosService;
         _plataformaPagoConfiguracion = plataformaPagoConfiguracion;
         _pagoRecurrenteGateway = pagoRecurrenteGateway;
         _unitOfWork = unitOfWork;
@@ -39,6 +43,11 @@ public class CambiarPlanSuscripcionUseCase
         var nuevoPlan = await _planRepository.GetByIdAsync(request.NuevoPlanId, cancellationToken);
         if (nuevoPlan is null)
             return Result.Failure<SuscripcionAdminResponse>("Plan no encontrado.");
+
+        var limiteResult = await _validarLimiteRecursosService.ValidarCambioDePlanAsync(
+            suscripcion.NegocioId, nuevoPlan, cancellationToken);
+        if (limiteResult.IsFailure)
+            return Result.Failure<SuscripcionAdminResponse>(limiteResult.Error!);
 
         suscripcion.CambiarPlan(nuevoPlan);
         _suscripcionRepository.Update(suscripcion);

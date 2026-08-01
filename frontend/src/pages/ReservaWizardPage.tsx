@@ -268,7 +268,7 @@ export function ReservaWizardPage() {
 
           {submitError && <ErrorBanner message={submitError} />}
 
-          {!cancelada && reserva.estado !== EstadoReserva.Cancelada && (
+          {!cancelada && reserva.estado !== EstadoReserva.Cancelada && reserva.estado !== EstadoReserva.Confirmada && (
             <div className="flex flex-col gap-2 sm:flex-row">
               {reserva.linkPago && (
                 <Button className="flex-1" onClick={() => (window.location.href = reserva.linkPago!)}>

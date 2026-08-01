@@ -1,4 +1,5 @@
 using MiTurno.Application.Common.Interfaces;
+using MiTurno.Application.Common.Services;
 using MiTurno.Application.Features.Admin.Suscripciones;
 using MiTurno.Application.Features.Admin.Suscripciones.Dtos;
 using MiTurno.Domain.Entities;
@@ -11,6 +12,7 @@ public class CambiarPlanSuscripcionUseCaseTests
     private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
     private readonly IPlanRepository _planRepository = Substitute.For<IPlanRepository>();
     private readonly INegocioRepository _negocioRepository = Substitute.For<INegocioRepository>();
+    private readonly IRecursoRepository _recursoRepository = Substitute.For<IRecursoRepository>();
     private readonly IPlataformaPagoConfiguracion _plataformaPagoConfiguracion = Substitute.For<IPlataformaPagoConfiguracion>();
     private readonly IPagoRecurrenteGateway _pagoRecurrenteGateway = Substitute.For<IPagoRecurrenteGateway>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -19,9 +21,11 @@ public class CambiarPlanSuscripcionUseCaseTests
 
     public CambiarPlanSuscripcionUseCaseTests()
     {
+        var validarLimiteRecursosService = new ValidarLimiteRecursosService(_recursoRepository, _suscripcionRepository);
         _useCase = new CambiarPlanSuscripcionUseCase(
-            _suscripcionRepository, _planRepository, _negocioRepository,
+            _suscripcionRepository, _planRepository, _negocioRepository, validarLimiteRecursosService,
             _plataformaPagoConfiguracion, _pagoRecurrenteGateway, _unitOfWork);
+        _recursoRepository.GetByNegocioIdAsync(Arg.Any<Guid>()).Returns(Array.Empty<Recurso>());
     }
 
     [Fact]
@@ -43,6 +47,29 @@ public class CambiarPlanSuscripcionUseCaseTests
         result.Value.PlanNombre.Should().Be("Premium");
         result.Value.PlanPrecio.Should().Be(10000m);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConMasCanchasActivasQueElLimiteDelPlanNuevo_DevuelveFailureSinCambiarElPlan()
+    {
+        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        var planViejo = Plan.Crear("Premium", 10000m, Periodicidad.Mensual, 10, 1000);
+        var planNuevo = Plan.Crear("Estándar", 5000m, Periodicidad.Mensual, limiteRecursos: 2, limiteReservasPorMes: 200);
+        var suscripcion = Suscripcion.IniciarPrueba(negocio.Id, planViejo);
+        _suscripcionRepository.GetByIdAsync(suscripcion.Id).Returns(suscripcion);
+        _planRepository.GetByIdAsync(planNuevo.Id).Returns(planNuevo);
+        _recursoRepository.GetByNegocioIdAsync(negocio.Id).Returns([
+            Recurso.Crear(negocio.Id, "Cancha 1", "Futbol", TimeSpan.FromMinutes(60), 5000m),
+            Recurso.Crear(negocio.Id, "Cancha 2", "Futbol", TimeSpan.FromMinutes(60), 5000m),
+            Recurso.Crear(negocio.Id, "Cancha 3", "Futbol", TimeSpan.FromMinutes(60), 5000m),
+        ]);
+
+        var result = await _useCase.ExecuteAsync(suscripcion.Id, new CambiarPlanSuscripcionRequest(planNuevo.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("Estándar");
+        suscripcion.PlanId.Should().Be(planViejo.Id);
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

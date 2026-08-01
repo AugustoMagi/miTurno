@@ -7,7 +7,7 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { Field, Input } from '../../components/Input'
-import { BuildingIcon, LockIcon, MailIcon, UserIcon } from '../../components/icons'
+import { ArrowLeftIcon, BuildingIcon, LockIcon, MailIcon, UserIcon } from '../../components/icons'
 import { validarEmail, validarPassword, validarRequerido, validarSlug } from '../../utils/validation'
 
 // Deriva un slug razonable del nombre del negocio; el usuario puede después ajustarlo a mano,
@@ -99,6 +99,13 @@ export function RegisterPage() {
   return (
     <div className="bg-dotted flex min-h-svh items-center justify-center px-4 py-10">
       <div className="animate-fade-in-up w-full max-w-sm">
+        <Link
+          to="/"
+          className="mb-4 flex items-center justify-center gap-1 text-sm font-medium text-link-600 hover:text-link-700"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Volver al inicio
+        </Link>
         <div className="mb-6 flex items-center justify-center gap-2">
           <img src="/logo.png" alt="MiTurno" className="h-9 w-9 rounded-xl object-cover shadow-soft" />
           <p className="text-xl font-bold tracking-tight text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>

@@ -6,7 +6,7 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { Field, Input } from '../../components/Input'
-import { MailIcon } from '../../components/icons'
+import { ArrowLeftIcon, MailIcon } from '../../components/icons'
 import { validarEmail } from '../../utils/validation'
 
 export function OlvidePasswordPage() {
@@ -37,6 +37,13 @@ export function OlvidePasswordPage() {
   return (
     <div className="bg-dotted flex min-h-svh items-center justify-center px-4">
       <div className="animate-fade-in-up w-full max-w-sm">
+        <Link
+          to="/"
+          className="mb-4 flex items-center justify-center gap-1 text-sm font-medium text-link-600 hover:text-link-700"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Volver al inicio
+        </Link>
         <div className="mb-6 flex items-center justify-center gap-2">
           <img src="/logo.png" alt="MiTurno" className="h-9 w-9 rounded-xl object-cover shadow-soft" />
           <p className="text-xl font-bold tracking-tight text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>

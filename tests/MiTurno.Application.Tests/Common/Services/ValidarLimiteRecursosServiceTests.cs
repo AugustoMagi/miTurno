@@ -76,4 +76,54 @@ public class ValidarLimiteRecursosServiceTests
 
         result.IsSuccess.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task ValidarCambioDePlanAsync_ConMasCanchasActivasQueElLimiteDelPlanNuevo_DevuelveFailureConElNombreDelPlanNuevo()
+    {
+        var negocioId = Guid.NewGuid();
+        var planNuevo = Plan.Crear("Estándar", 5000m, Periodicidad.Mensual, limiteRecursos: 2, limiteReservasPorMes: 200);
+        _recursoRepository.GetByNegocioIdAsync(negocioId).Returns([
+            Recurso.Crear(negocioId, "Cancha 1", "Futbol", TimeSpan.FromMinutes(60), 5000m),
+            Recurso.Crear(negocioId, "Cancha 2", "Futbol", TimeSpan.FromMinutes(60), 5000m),
+            Recurso.Crear(negocioId, "Cancha 3", "Futbol", TimeSpan.FromMinutes(60), 5000m),
+        ]);
+
+        var result = await _service.ValidarCambioDePlanAsync(negocioId, planNuevo);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("Estándar");
+        result.Error.Should().Contain("3");
+    }
+
+    [Fact]
+    public async Task ValidarCambioDePlanAsync_ConCanchasActivasEnElLimiteDelPlanNuevo_DevuelveSuccess()
+    {
+        var negocioId = Guid.NewGuid();
+        var planNuevo = Plan.Crear("Estándar", 5000m, Periodicidad.Mensual, limiteRecursos: 2, limiteReservasPorMes: 200);
+        _recursoRepository.GetByNegocioIdAsync(negocioId).Returns([
+            Recurso.Crear(negocioId, "Cancha 1", "Futbol", TimeSpan.FromMinutes(60), 5000m),
+            Recurso.Crear(negocioId, "Cancha 2", "Futbol", TimeSpan.FromMinutes(60), 5000m),
+        ]);
+
+        var result = await _service.ValidarCambioDePlanAsync(negocioId, planNuevo);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ValidarCambioDePlanAsync_ConCanchasDesactivadasSinContarParaElLimite_DevuelveSuccess()
+    {
+        var negocioId = Guid.NewGuid();
+        var planNuevo = Plan.Crear("Estándar", 5000m, Periodicidad.Mensual, limiteRecursos: 1, limiteReservasPorMes: 200);
+        var recursoDesactivado = Recurso.Crear(negocioId, "Cancha 1", "Futbol", TimeSpan.FromMinutes(60), 5000m);
+        recursoDesactivado.Desactivar();
+        _recursoRepository.GetByNegocioIdAsync(negocioId).Returns([
+            recursoDesactivado,
+            Recurso.Crear(negocioId, "Cancha 2", "Futbol", TimeSpan.FromMinutes(60), 5000m),
+        ]);
+
+        var result = await _service.ValidarCambioDePlanAsync(negocioId, planNuevo);
+
+        result.IsSuccess.Should().BeTrue();
+    }
 }
