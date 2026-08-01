@@ -69,8 +69,20 @@ public class Recurso : BaseEntity
 
     public void AgregarBloqueoFecha(BloqueoFecha bloqueo)
     {
-        if (_bloqueosFecha.Any(b => b.Fecha == bloqueo.Fecha))
-            throw new DomainException("Ya existe un bloqueo para esa fecha.");
+        var bloqueosDelDia = _bloqueosFecha.Where(b => b.Fecha == bloqueo.Fecha).ToList();
+
+        if (bloqueo.EsDiaCompleto)
+        {
+            if (bloqueosDelDia.Count > 0)
+                throw new DomainException("Ya existe un bloqueo para esa fecha.");
+        }
+        else
+        {
+            if (bloqueosDelDia.Any(b => b.EsDiaCompleto))
+                throw new DomainException("Esa fecha ya está bloqueada por completo.");
+            if (bloqueosDelDia.Any(bloqueo.SeSuperponeCon))
+                throw new DomainException("Ya existe un bloqueo que se superpone con ese horario.");
+        }
 
         _bloqueosFecha.Add(bloqueo);
     }

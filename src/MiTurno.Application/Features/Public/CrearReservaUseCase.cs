@@ -93,8 +93,11 @@ public class CrearReservaUseCase
 
         var horaFin = request.HoraInicio + recurso.DuracionTurno;
 
-        if (recurso.BloqueosFecha.Any(b => b.Fecha == request.Fecha))
+        var bloqueosDelDia = recurso.BloqueosFecha.Where(b => b.Fecha == request.Fecha).ToList();
+        if (bloqueosDelDia.Any(b => b.EsDiaCompleto))
             return Result.Failure<ReservaResponse>("El recurso no tiene disponibilidad ese día.");
+        if (bloqueosDelDia.Any(b => b.Cubre(request.HoraInicio, horaFin)))
+            return Result.Failure<ReservaResponse>("El horario seleccionado no está disponible.");
 
         var horarioValido = recurso.HorariosDisponibles.Any(h =>
             h.DiaSemana == request.Fecha.DayOfWeek &&

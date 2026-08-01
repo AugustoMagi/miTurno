@@ -9,9 +9,10 @@ using MiTurno.Domain.Exceptions;
 namespace MiTurno.Application.Features.Recursos.Bloqueos;
 
 /// <summary>
-/// Agrega un bloqueo de fecha a un recurso, verificando que pertenezca al negocio autenticado. El
-/// bloqueo no cancela las reservas activas que ya existan ese día (eso queda a criterio del dueño,
-/// vía CancelarReservaUseCase), pero se informan en la respuesta para que no pasen desapercibidas.
+/// Agrega un bloqueo de fecha (día completo) u horario (un rango puntual dentro del día) a un
+/// recurso, verificando que pertenezca al negocio autenticado. El bloqueo no cancela las reservas
+/// activas que ya existan en ese rango (eso queda a criterio del dueño, vía CancelarReservaUseCase),
+/// pero se informan en la respuesta para que no pasen desapercibidas.
 /// </summary>
 public class AgregarBloqueoFechaUseCase
 {
@@ -49,13 +50,14 @@ public class AgregarBloqueoFechaUseCase
 
         try
         {
-            var bloqueo = BloqueoFecha.Crear(recursoId, request.Fecha, request.Motivo);
+            var bloqueo = BloqueoFecha.Crear(
+                recursoId, request.Fecha, request.HoraInicio, request.HoraFin, request.Motivo);
             recurso.AgregarBloqueoFecha(bloqueo);
 
             _recursoRepository.Update(recurso);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            var reservasAfectadas = await ObtenerReservasAfectadasAsync(recursoId, request.Fecha, cancellationToken);
+            var reservasAfectadas = await ObtenerReservasAfectadasAsync(recursoId, bloqueo, cancellationToken);
 
             return Result.Success(bloqueo.ToResponse(reservasAfectadas));
         }
@@ -66,11 +68,12 @@ public class AgregarBloqueoFechaUseCase
     }
 
     private async Task<IReadOnlyList<ReservaAfectadaResponse>> ObtenerReservasAfectadasAsync(
-        Guid recursoId, DateOnly fecha, CancellationToken cancellationToken)
+        Guid recursoId, BloqueoFecha bloqueo, CancellationToken cancellationToken)
     {
-        var reservasDelDia = await _reservaRepository.GetByRecursoYFechaAsync(recursoId, fecha, cancellationToken);
+        var reservasDelDia = await _reservaRepository.GetByRecursoYFechaAsync(recursoId, bloqueo.Fecha, cancellationToken);
         var reservasActivas = reservasDelDia
             .Where(r => r.Estado is EstadoReserva.Pendiente or EstadoReserva.Confirmada)
+            .Where(r => bloqueo.Cubre(r.HoraInicio, r.HoraFin))
             .ToList();
 
         if (reservasActivas.Count == 0)

@@ -51,7 +51,8 @@ public class ListarTurnosDisponiblesUseCase
         if (recurso is null || recurso.NegocioId != negocio.Id || !recurso.Activo)
             return Result.Failure<IReadOnlyList<TurnoDisponibleResponse>>("Recurso no encontrado.");
 
-        if (recurso.BloqueosFecha.Any(b => b.Fecha == fecha))
+        var bloqueosDelDia = recurso.BloqueosFecha.Where(b => b.Fecha == fecha).ToList();
+        if (bloqueosDelDia.Any(b => b.EsDiaCompleto))
             return Result.Success<IReadOnlyList<TurnoDisponibleResponse>>([]);
 
         var reservasDelDia = await _reservaRepository.GetByRecursoYFechaAsync(recursoId, fecha, cancellationToken);
@@ -74,7 +75,8 @@ public class ListarTurnosDisponiblesUseCase
                 var inicioDateTime = fecha.ToDateTime(TimeOnly.FromTimeSpan(inicio));
                 var faltaAnticipacion = inicioDateTime <= minimoPermitido;
                 var ocupado = reservasActivas.Any(r => r.HoraInicio < fin && inicio < r.HoraFin);
-                if (!faltaAnticipacion && !ocupado)
+                var bloqueado = bloqueosDelDia.Any(b => b.Cubre(inicio, fin));
+                if (!faltaAnticipacion && !ocupado && !bloqueado)
                     turnos.Add(new TurnoDisponibleResponse(inicio, fin));
 
                 inicio += GranularidadInicio;

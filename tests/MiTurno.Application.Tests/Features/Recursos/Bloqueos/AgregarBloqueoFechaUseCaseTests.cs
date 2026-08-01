@@ -97,6 +97,120 @@ public class AgregarBloqueoFechaUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ConHorarioPuntual_BloqueaSoloEseRangoYDevuelveLoCargado()
+    {
+        var negocioId = Guid.NewGuid();
+        var recurso = Recurso.Crear(negocioId, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+        _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, FechaFutura).Returns([]);
+
+        var request = new AgregarBloqueoFechaRequest(
+            FechaFutura, "Reservado por WhatsApp", TimeSpan.FromHours(18), TimeSpan.FromHours(19));
+        var result = await _useCase.ExecuteAsync(negocioId, recurso.Id, request);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.HoraInicio.Should().Be(TimeSpan.FromHours(18));
+        result.Value.HoraFin.Should().Be(TimeSpan.FromHours(19));
+        recurso.BloqueosFecha.Should().ContainSingle(b => !b.EsDiaCompleto);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConDosHorariosPuntualesNoSuperpuestosElMismoDia_PermiteAmbos()
+    {
+        var negocioId = Guid.NewGuid();
+        var recurso = Recurso.Crear(negocioId, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(
+            recurso.Id, FechaFutura, TimeSpan.FromHours(10), TimeSpan.FromHours(11)));
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+        _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, FechaFutura).Returns([]);
+
+        var request = new AgregarBloqueoFechaRequest(
+            FechaFutura, null, TimeSpan.FromHours(18), TimeSpan.FromHours(19));
+        var result = await _useCase.ExecuteAsync(negocioId, recurso.Id, request);
+
+        result.IsSuccess.Should().BeTrue();
+        recurso.BloqueosFecha.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConHorarioQueSeSuperponeAOtroBloqueoDelMismoDia_DevuelveFailure()
+    {
+        var negocioId = Guid.NewGuid();
+        var recurso = Recurso.Crear(negocioId, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(
+            recurso.Id, FechaFutura, TimeSpan.FromHours(18), TimeSpan.FromHours(19)));
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+
+        var request = new AgregarBloqueoFechaRequest(
+            FechaFutura, null, TimeSpan.FromHours(18) + TimeSpan.FromMinutes(30), TimeSpan.FromHours(20));
+        var result = await _useCase.ExecuteAsync(negocioId, recurso.Id, request);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Ya existe un bloqueo que se superpone con ese horario.");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConHorarioPuntualEnUnDiaYaBloqueadoCompleto_DevuelveFailure()
+    {
+        var negocioId = Guid.NewGuid();
+        var recurso = Recurso.Crear(negocioId, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(recurso.Id, FechaFutura));
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+
+        var request = new AgregarBloqueoFechaRequest(
+            FechaFutura, null, TimeSpan.FromHours(18), TimeSpan.FromHours(19));
+        var result = await _useCase.ExecuteAsync(negocioId, recurso.Id, request);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Esa fecha ya está bloqueada por completo.");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConHorarioPuntual_SoloDevuelveComoAfectadasLasReservasQueSeSuperponen()
+    {
+        var negocioId = Guid.NewGuid();
+        var recurso = Recurso.Crear(negocioId, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        var clienteDentro = Cliente.Crear("Juan Perez", "juan@test.com");
+        var reservaDentro = Reserva.Crear(
+            recurso.Id, clienteDentro.Id, FechaFutura, TimeSpan.FromHours(18), TimeSpan.FromHours(19), 5000m);
+        var reservaFuera = Reserva.Crear(
+            recurso.Id, Guid.NewGuid(), FechaFutura, TimeSpan.FromHours(9), TimeSpan.FromHours(10), 5000m);
+
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+        _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, FechaFutura).Returns([reservaDentro, reservaFuera]);
+        _clienteRepository.GetByIdAsync(clienteDentro.Id).Returns(clienteDentro);
+
+        var request = new AgregarBloqueoFechaRequest(
+            FechaFutura, null, TimeSpan.FromHours(18), TimeSpan.FromHours(19));
+        var result = await _useCase.ExecuteAsync(negocioId, recurso.Id, request);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ReservasAfectadas.Should().ContainSingle(r => r.Id == reservaDentro.Id);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConSoloHoraInicioSinHoraFin_DevuelveFailureDeValidacion()
+    {
+        var result = await _useCase.ExecuteAsync(
+            Guid.NewGuid(), Guid.NewGuid(),
+            new AgregarBloqueoFechaRequest(FechaFutura, null, TimeSpan.FromHours(18), null));
+
+        result.IsFailure.Should().BeTrue();
+        await _recursoRepository.DidNotReceive().GetConHorariosYBloqueosAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConHoraInicioPosteriorAHoraFin_DevuelveFailureDeValidacion()
+    {
+        var result = await _useCase.ExecuteAsync(
+            Guid.NewGuid(), Guid.NewGuid(),
+            new AgregarBloqueoFechaRequest(FechaFutura, null, TimeSpan.FromHours(19), TimeSpan.FromHours(18)));
+
+        result.IsFailure.Should().BeTrue();
+        await _recursoRepository.DidNotReceive().GetConHorariosYBloqueosAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ConFechaPasada_DevuelveFailureDeValidacionSinConsultarRecurso()
     {
         var result = await _useCase.ExecuteAsync(

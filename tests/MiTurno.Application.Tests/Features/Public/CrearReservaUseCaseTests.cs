@@ -182,6 +182,33 @@ public class CrearReservaUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ConTurnoDentroDeUnBloqueoHorarioPuntual_DevuelveFailureSinCrearNada()
+    {
+        var (negocio, recurso) = EscenarioValido();
+        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(
+            recurso.Id, FechaFutura, TimeSpan.FromHours(18), TimeSpan.FromHours(19), "Reservado por WhatsApp"));
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("El horario seleccionado no está disponible.");
+        await _reservaRepository.DidNotReceive().AddAsync(Arg.Any<Reserva>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConTurnoFueraDeUnBloqueoHorarioPuntual_PermiteLaReserva()
+    {
+        var (negocio, recurso) = EscenarioValido();
+        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(
+            recurso.Id, FechaFutura, TimeSpan.FromHours(9), TimeSpan.FromHours(10), "Reservado por WhatsApp"));
+        _clienteRepository.GetByEmailAsync("juan@test.com").Returns((Cliente?)null);
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ConNegocioInactivo_DevuelveFailure()
     {
         var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
@@ -210,7 +237,7 @@ public class CrearReservaUseCaseTests
     public async Task ExecuteAsync_ConFechaBloqueada_DevuelveFailure()
     {
         var (negocio, recurso) = EscenarioValido();
-        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(recurso.Id, FechaFutura, "Feriado"));
+        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(recurso.Id, FechaFutura, motivo: "Feriado"));
 
         var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, RequestValido(), WebhookBaseUrl);
 

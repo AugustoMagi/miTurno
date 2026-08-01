@@ -90,12 +90,31 @@ public class ListarTurnosDisponiblesUseCaseTests
     public async Task ExecuteAsync_ConFechaBloqueada_DevuelveListaVacia()
     {
         var (negocio, recurso) = EscenarioValido();
-        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(recurso.Id, FechaFutura, "Feriado"));
+        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(recurso.Id, FechaFutura, motivo: "Feriado"));
 
         var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, FechaFutura);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConBloqueoDeHorarioPuntual_ExcluyeSoloLosTurnosQueSeSuperponen()
+    {
+        var (negocio, recurso) = EscenarioValido();
+        // Ventana 18:00-21:00, turno de 1h => 9 turnos posibles en total (ver test de arriba).
+        // Bloqueo puntual 19:00-20:00: excluye los inicios cuyo turno se superpone (18:15 a 19:45).
+        recurso.AgregarBloqueoFecha(BloqueoFecha.Crear(
+            recurso.Id, FechaFutura, TimeSpan.FromHours(19), TimeSpan.FromHours(20), "Reservado por WhatsApp"));
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, FechaFutura);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().OnlyContain(t =>
+            t.HoraFin <= TimeSpan.FromHours(19) || t.HoraInicio >= TimeSpan.FromHours(20));
+        result.Value.Should().Contain(t => t.HoraInicio == TimeSpan.FromHours(18));
+        result.Value.Should().Contain(t => t.HoraInicio == TimeSpan.FromHours(20));
+        result.Value.Should().NotContain(t => t.HoraInicio == TimeSpan.FromHours(19));
     }
 
     [Fact]

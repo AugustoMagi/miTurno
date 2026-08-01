@@ -10,6 +10,8 @@ internal static class BloqueoFechaMapper
         bloqueo.Id,
         bloqueo.RecursoId,
         bloqueo.Fecha,
+        bloqueo.HoraInicio,
+        bloqueo.HoraFin,
         bloqueo.Motivo,
         reservasAfectadas ?? []);
 }

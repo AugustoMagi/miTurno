@@ -15,8 +15,10 @@ public class BloqueoFechaConfiguration : IEntityTypeConfiguration<BloqueoFecha>
 
         builder.Property(b => b.Motivo).HasMaxLength(300);
 
-        // Un mismo recurso no puede tener dos bloqueos para la misma fecha.
-        builder.HasIndex(b => new { b.RecursoId, b.Fecha }).IsUnique();
+        // Ya no es único por fecha: un recurso puede tener varios bloqueos horarios (no
+        // superpuestos) el mismo día, además del caso de siempre de un único bloqueo de día
+        // completo. Esa regla la aplica Recurso.AgregarBloqueoFecha, no una constraint de BD.
+        builder.HasIndex(b => new { b.RecursoId, b.Fecha });
 
         builder.HasOne<Recurso>()
             .WithMany(r => r.BloqueosFecha)

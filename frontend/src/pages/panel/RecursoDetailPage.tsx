@@ -54,6 +54,8 @@ export function RecursoDetailPage() {
 
   const [bloqueos, setBloqueos] = useState<BloqueoFecha[] | null>(null)
   const [fechaBloqueo, setFechaBloqueo] = useState('')
+  const [horaInicioBloqueo, setHoraInicioBloqueo] = useState('')
+  const [horaFinBloqueo, setHoraFinBloqueo] = useState('')
   const [motivoBloqueo, setMotivoBloqueo] = useState('')
   const [agregandoBloqueo, setAgregandoBloqueo] = useState(false)
   const [bloqueoError, setBloqueoError] = useState<string | null>(null)
@@ -94,6 +96,12 @@ export function RecursoDetailPage() {
   const errorDuracion = validarEntero(duracionTurnoMinutos, 'La duración del turno', 1)
   const errorPrecio = validarNumeroNoNegativo(precio, 'El precio')
   const errorRangoHorario = validarRangoHorario(horaInicio, horaFin)
+
+  const errorHorarioBloqueo = horaInicioBloqueo || horaFinBloqueo
+    ? !horaInicioBloqueo || !horaFinBloqueo
+      ? 'Completá el horario "desde" y "hasta", o dejá ambos vacíos para bloquear el día completo.'
+      : validarRangoHorario(horaInicioBloqueo, horaFinBloqueo)
+    : undefined
 
   async function handleGuardar(event: React.FormEvent) {
     event.preventDefault()
@@ -150,13 +158,24 @@ export function RecursoDetailPage() {
       setBloqueoError('La fecha es obligatoria.')
       return
     }
+    if (errorHorarioBloqueo) {
+      setBloqueoError(errorHorarioBloqueo)
+      return
+    }
     setAgregandoBloqueo(true)
     setBloqueoError(null)
     setUltimoBloqueoAfectados(null)
     try {
-      const bloqueo = await agregarBloqueo(id, { fecha: fechaBloqueo, motivo: motivoBloqueo || undefined })
+      const bloqueo = await agregarBloqueo(id, {
+        fecha: fechaBloqueo,
+        motivo: motivoBloqueo || undefined,
+        horaInicio: horaInicioBloqueo ? `${horaInicioBloqueo}:00` : undefined,
+        horaFin: horaFinBloqueo ? `${horaFinBloqueo}:00` : undefined,
+      })
       if (bloqueo.reservasAfectadas.length > 0) setUltimoBloqueoAfectados(bloqueo)
       setFechaBloqueo('')
+      setHoraInicioBloqueo('')
+      setHoraFinBloqueo('')
       setMotivoBloqueo('')
       cargarBloqueos(id)
     } catch (err) {
@@ -316,7 +335,12 @@ export function RecursoDetailPage() {
       </Card>
 
       <Card>
-        <h2 className="font-semibold text-slate-900">Bloqueos de fecha</h2>
+        <h2 className="font-semibold text-slate-900">Bloqueos de fecha y horario</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Bloqueá una fecha completa (feriado, mantenimiento) o solo un rango horario puntual — por
+          ejemplo, si ya te reservaron esa cancha por teléfono o WhatsApp y no querés que se pueda
+          reservar online también.
+        </p>
         <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={handleAgregarBloqueo}>
           <Field label="Fecha">
             <Input
@@ -324,6 +348,22 @@ export function RecursoDetailPage() {
               required
               value={fechaBloqueo}
               onChange={(event) => setFechaBloqueo(event.target.value)}
+              className="w-auto"
+            />
+          </Field>
+          <Field label="Desde (opcional)">
+            <Input
+              type="time"
+              value={horaInicioBloqueo}
+              onChange={(event) => setHoraInicioBloqueo(event.target.value)}
+              className="w-auto"
+            />
+          </Field>
+          <Field label="Hasta (opcional)" error={errorHorarioBloqueo}>
+            <Input
+              type="time"
+              value={horaFinBloqueo}
+              onChange={(event) => setHoraFinBloqueo(event.target.value)}
               className="w-auto"
             />
           </Field>
@@ -338,6 +378,9 @@ export function RecursoDetailPage() {
             Bloquear
           </Button>
         </form>
+        <p className="mt-2 text-xs text-slate-400">
+          Dejá "Desde" y "Hasta" vacíos para bloquear el día completo.
+        </p>
         {bloqueoError && (
           <div className="mt-3">
             <ErrorBanner message={bloqueoError} />
@@ -374,6 +417,15 @@ export function RecursoDetailPage() {
               >
                 <span>
                   <span className="font-medium text-slate-900">{bloqueo.fecha}</span>{' '}
+                  {bloqueo.horaInicio && bloqueo.horaFin ? (
+                    <span className="text-slate-500">
+                      {formatHora(bloqueo.horaInicio)} - {formatHora(bloqueo.horaFin)}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      Día completo
+                    </span>
+                  )}{' '}
                   {bloqueo.motivo && <span className="text-slate-500">— {bloqueo.motivo}</span>}
                 </span>
                 <button
