@@ -11,5 +11,7 @@ public class ActualizarMiNegocioValidator : AbstractValidator<ActualizarMiNegoci
         RuleFor(x => x.Descripcion).MaximumLength(500).When(x => x.Descripcion is not null);
         RuleFor(x => x.Direccion).MaximumLength(200).When(x => x.Direccion is not null);
         RuleFor(x => x.Telefono).MaximumLength(30).When(x => x.Telefono is not null);
+        RuleFor(x => x.AnticipacionMinimaHoras).InclusiveBetween(0, 720)
+            .WithMessage("La anticipación mínima tiene que estar entre 0 y 720 horas (30 días).");
     }
 }

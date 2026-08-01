@@ -13,6 +13,13 @@ public class Negocio : BaseEntity
     public string Email { get; private set; } = null!;
     public bool Activo { get; private set; }
 
+    /// <summary>
+    /// Cuántas horas antes del inicio de un turno deja de poder reservarse (ej. 24 = "con un día de
+    /// anticipación", 6 = "con 6 horas de anticipación"). 0 significa sin restricción: se puede
+    /// reservar hasta el último momento, como era el comportamiento antes de esta configuración.
+    /// </summary>
+    public int AnticipacionMinimaHoras { get; private set; }
+
     private readonly List<Recurso> _recursos = [];
     public IReadOnlyCollection<Recurso> Recursos => _recursos.AsReadOnly();
 
@@ -39,15 +46,19 @@ public class Negocio : BaseEntity
         };
     }
 
-    public void ActualizarDatos(string nombre, string? descripcion, string? direccion, string? telefono)
+    public void ActualizarDatos(
+        string nombre, string? descripcion, string? direccion, string? telefono, int anticipacionMinimaHoras)
     {
         if (string.IsNullOrWhiteSpace(nombre))
             throw new DomainException("El nombre del negocio es obligatorio.");
+        if (anticipacionMinimaHoras < 0)
+            throw new DomainException("La anticipación mínima no puede ser negativa.");
 
         Nombre = nombre;
         Descripcion = descripcion;
         Direccion = direccion;
         Telefono = telefono;
+        AnticipacionMinimaHoras = anticipacionMinimaHoras;
         MarcarActualizado();
     }
 

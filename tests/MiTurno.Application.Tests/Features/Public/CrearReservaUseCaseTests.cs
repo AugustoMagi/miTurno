@@ -136,6 +136,52 @@ public class CrearReservaUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ConTurnoDentroDeLaAnticipacionMinimaDelNegocio_DevuelveFailureSinCrearNada()
+    {
+        var ahora = new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc);
+        var hoy = DateOnly.FromDateTime(ahora);
+        _clock.Now.Returns(ahora);
+
+        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        negocio.ActualizarDatos("Cancha Norte", null, null, null, anticipacionMinimaHoras: 6);
+        var recurso = Recurso.Crear(negocio.Id, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        recurso.AgregarHorarioDisponible(HorarioDisponible.Crear(
+            recurso.Id, hoy.DayOfWeek, TimeSpan.FromHours(8), TimeSpan.FromHours(22)));
+        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
+
+        // Anticipación de 6hs desde las 08:00 => recién se puede reservar a partir de las 14:15.
+        var request = RequestValido() with { Fecha = hoy, HoraInicio = TimeSpan.FromHours(10) };
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, request, WebhookBaseUrl);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("6 horas de anticipación");
+        await _reservaRepository.DidNotReceive().AddAsync(Arg.Any<Reserva>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConTurnoMasAlladeLaAnticipacionMinimaDelNegocio_PermiteLaReserva()
+    {
+        var ahora = new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc);
+        var hoy = DateOnly.FromDateTime(ahora);
+        _clock.Now.Returns(ahora);
+
+        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        negocio.ActualizarDatos("Cancha Norte", null, null, null, anticipacionMinimaHoras: 6);
+        var recurso = Recurso.Crear(negocio.Id, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        recurso.AgregarHorarioDisponible(HorarioDisponible.Crear(
+            recurso.Id, hoy.DayOfWeek, TimeSpan.FromHours(8), TimeSpan.FromHours(22)));
+        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+        _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, hoy).Returns([]);
+        _clienteRepository.GetByEmailAsync("juan@test.com").Returns((Cliente?)null);
+
+        var request = RequestValido() with { Fecha = hoy, HoraInicio = TimeSpan.FromHours(15) };
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, request, WebhookBaseUrl);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ConNegocioInactivo_DevuelveFailure()
     {
         var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");

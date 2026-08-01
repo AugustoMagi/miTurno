@@ -57,7 +57,11 @@ public class ListarTurnosDisponiblesUseCase
         var reservasDelDia = await _reservaRepository.GetByRecursoYFechaAsync(recursoId, fecha, cancellationToken);
         var reservasActivas = reservasDelDia.Where(r => r.Estado != EstadoReserva.Cancelada).ToList();
 
-        var esHoy = fecha == DateOnly.FromDateTime(ahora);
+        // Un turno deja de ofrecerse no solo cuando ya arrancó (anticipación 0, el caso de siempre),
+        // sino también cuando arranca dentro de la ventana de anticipación mínima que pidió el
+        // negocio — se compara la fecha+hora completa del turno, no solo la hora, porque esa ventana
+        // puede extenderse a días futuros (ej. 24hs de anticipación bloquea la mañana de mañana).
+        var minimoPermitido = ahora + TimeSpan.FromHours(negocio.AnticipacionMinimaHoras);
 
         var turnos = new List<TurnoDisponibleResponse>();
         foreach (var horario in recurso.HorariosDisponibles.Where(h => h.DiaSemana == fecha.DayOfWeek))
@@ -67,9 +71,10 @@ public class ListarTurnosDisponiblesUseCase
             {
                 var fin = inicio + recurso.DuracionTurno;
 
-                var yaPaso = esHoy && inicio <= ahora.TimeOfDay;
+                var inicioDateTime = fecha.ToDateTime(TimeOnly.FromTimeSpan(inicio));
+                var faltaAnticipacion = inicioDateTime <= minimoPermitido;
                 var ocupado = reservasActivas.Any(r => r.HoraInicio < fin && inicio < r.HoraFin);
-                if (!yaPaso && !ocupado)
+                if (!faltaAnticipacion && !ocupado)
                     turnos.Add(new TurnoDisponibleResponse(inicio, fin));
 
                 inicio += GranularidadInicio;

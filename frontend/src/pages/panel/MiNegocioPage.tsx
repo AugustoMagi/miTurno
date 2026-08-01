@@ -8,7 +8,7 @@ import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { Field, Input, Textarea } from '../../components/Input'
 import { CheckIcon } from '../../components/icons'
-import { validarRequerido, validarTelefono } from '../../utils/validation'
+import { validarEntero, validarRequerido, validarTelefono } from '../../utils/validation'
 
 export function MiNegocioPage() {
   const [negocio, setNegocio] = useState<MiNegocio | null>(null)
@@ -19,7 +19,8 @@ export function MiNegocioPage() {
   const [descripcion, setDescripcion] = useState('')
   const [direccion, setDireccion] = useState('')
   const [telefono, setTelefono] = useState('')
-  const [tocado, setTocado] = useState<{ nombre?: boolean; telefono?: boolean }>({})
+  const [anticipacionMinimaHoras, setAnticipacionMinimaHoras] = useState(0)
+  const [tocado, setTocado] = useState<{ nombre?: boolean; telefono?: boolean; anticipacion?: boolean }>({})
   const [guardando, setGuardando] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [guardadoOk, setGuardadoOk] = useState(false)
@@ -32,6 +33,7 @@ export function MiNegocioPage() {
         setDescripcion(data.descripcion ?? '')
         setDireccion(data.direccion ?? '')
         setTelefono(data.telefono ?? '')
+        setAnticipacionMinimaHoras(data.anticipacionMinimaHoras)
       })
       .catch((err) => setCargaError(extractError(err)))
   }, [])
@@ -46,11 +48,12 @@ export function MiNegocioPage() {
 
   const errorNombre = validarRequerido(nombre, 'El nombre')
   const errorTelefono = validarTelefono(telefono)
+  const errorAnticipacion = validarEntero(anticipacionMinimaHoras, 'La anticipación mínima', 0)
 
   async function handleGuardar(event: React.FormEvent) {
     event.preventDefault()
-    setTocado({ nombre: true, telefono: true })
-    if (errorNombre || errorTelefono) return
+    setTocado({ nombre: true, telefono: true, anticipacion: true })
+    if (errorNombre || errorTelefono || errorAnticipacion) return
     setGuardando(true)
     setFormError(null)
     setGuardadoOk(false)
@@ -60,6 +63,7 @@ export function MiNegocioPage() {
         descripcion: descripcion.trim() || undefined,
         direccion: direccion.trim() || undefined,
         telefono: telefono.trim() || undefined,
+        anticipacionMinimaHoras,
       })
       setNegocio(actualizado)
       setGuardadoOk(true)
@@ -139,6 +143,30 @@ export function MiNegocioPage() {
               onChange={(event) => setTelefono(event.target.value)}
               onBlur={() => setTocado((t) => ({ ...t, telefono: true }))}
               aria-invalid={Boolean(tocado.telefono && errorTelefono)}
+            />
+          </Field>
+
+          <Field
+            label="Anticipación mínima para reservar (horas)"
+            error={tocado.anticipacion ? errorAnticipacion : undefined}
+            hint={
+              !errorAnticipacion
+                ? anticipacionMinimaHoras === 0
+                  ? 'Sin restricción: se puede reservar hasta el último momento.'
+                  : `Los clientes van a poder reservar hasta ${anticipacionMinimaHoras} hora${anticipacionMinimaHoras === 1 ? '' : 's'} antes del turno (ej: 24 = con un día de anticipación, 6 = con 6 horas).`
+                : undefined
+            }
+          >
+            <Input
+              type="number"
+              min={0}
+              max={720}
+              step={1}
+              className="sm:w-40"
+              value={anticipacionMinimaHoras}
+              onChange={(event) => setAnticipacionMinimaHoras(Number(event.target.value))}
+              onBlur={() => setTocado((t) => ({ ...t, anticipacion: true }))}
+              aria-invalid={Boolean(tocado.anticipacion && errorAnticipacion)}
             />
           </Field>
 

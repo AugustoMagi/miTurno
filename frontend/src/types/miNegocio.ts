@@ -7,6 +7,7 @@ export interface MiNegocio {
   telefono: string | null
   email: string
   activo: boolean
+  anticipacionMinimaHoras: number
 }
 
 export interface ActualizarMiNegocioInput {
@@ -14,4 +15,5 @@ export interface ActualizarMiNegocioInput {
   descripcion?: string
   direccion?: string
   telefono?: string
+  anticipacionMinimaHoras: number
 }

@@ -73,6 +73,20 @@ public class CrearReservaUseCase
             return Result.Failure<ReservaResponse>(negocioResult.Error!);
         var negocio = negocioResult.Value;
 
+        // Chequeo aparte del "ya pasó" de arriba (que no necesita cargar el negocio): acá sí hace
+        // falta, porque la ventana de anticipación mínima es una configuración propia de cada negocio.
+        if (negocio.AnticipacionMinimaHoras > 0)
+        {
+            var inicioDateTime = request.Fecha.ToDateTime(TimeOnly.FromTimeSpan(request.HoraInicio));
+            var minimoPermitido = ahora + TimeSpan.FromHours(negocio.AnticipacionMinimaHoras);
+            if (inicioDateTime <= minimoPermitido)
+            {
+                var horas = negocio.AnticipacionMinimaHoras;
+                return Result.Failure<ReservaResponse>(
+                    $"Este negocio requiere reservar con al menos {horas} hora{(horas == 1 ? "" : "s")} de anticipación.");
+            }
+        }
+
         var recurso = await _recursoRepository.GetConHorariosYBloqueosAsync(recursoId, cancellationToken);
         if (recurso is null || recurso.NegocioId != negocio.Id || !recurso.Activo)
             return Result.Failure<ReservaResponse>("Recurso no encontrado.");

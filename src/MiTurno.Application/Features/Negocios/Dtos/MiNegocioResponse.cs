@@ -8,4 +8,5 @@ public record MiNegocioResponse(
     string? Direccion,
     string? Telefono,
     string Email,
-    bool Activo);
+    bool Activo,
+    int AnticipacionMinimaHoras);

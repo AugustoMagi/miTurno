@@ -124,6 +124,56 @@ public class ListarTurnosDisponiblesUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ConAnticipacionMinimaConfigurada_ExcluyeTurnosDentroDeLaVentana()
+    {
+        var ahora = new DateTime(2026, 3, 10, 8, 0, 0, DateTimeKind.Utc);
+        var hoy = DateOnly.FromDateTime(ahora);
+        _clock.Now.Returns(ahora);
+
+        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        negocio.ActualizarDatos("Cancha Norte", null, null, null, anticipacionMinimaHoras: 6);
+        var recurso = Recurso.Crear(negocio.Id, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        recurso.AgregarHorarioDisponible(HorarioDisponible.Crear(
+            recurso.Id, hoy.DayOfWeek, TimeSpan.FromHours(8), TimeSpan.FromHours(22)));
+
+        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+        _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, hoy).Returns([]);
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, hoy);
+
+        result.IsSuccess.Should().BeTrue();
+        // 6hs de anticipación desde las 08:00 => recién se puede reservar a partir de las 14:15
+        // (14:00 exacto queda excluido, igual que "ya pasó" excluye el minuto exacto de ahora).
+        result.Value.Should().OnlyContain(t => t.HoraInicio >= TimeSpan.FromHours(14) + TimeSpan.FromMinutes(15));
+        result.Value.Should().Contain(t => t.HoraInicio == TimeSpan.FromHours(14) + TimeSpan.FromMinutes(15));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConAnticipacionMinimaDeUnDia_ExcluyeTodosLosTurnosDelDiaSiguiente()
+    {
+        var ahora = new DateTime(2026, 3, 10, 20, 0, 0, DateTimeKind.Utc);
+        var manana = DateOnly.FromDateTime(ahora).AddDays(1);
+        _clock.Now.Returns(ahora);
+
+        var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
+        negocio.ActualizarDatos("Cancha Norte", null, null, null, anticipacionMinimaHoras: 24);
+        var recurso = Recurso.Crear(negocio.Id, "Cancha 1", "Futbol", TimeSpan.FromHours(1), 5000m);
+        recurso.AgregarHorarioDisponible(HorarioDisponible.Crear(
+            recurso.Id, manana.DayOfWeek, TimeSpan.FromHours(8), TimeSpan.FromHours(20)));
+
+        _negocioRepository.GetBySlugAsync(negocio.Slug).Returns(negocio);
+        _recursoRepository.GetConHorariosYBloqueosAsync(recurso.Id).Returns(recurso);
+        _reservaRepository.GetByRecursoYFechaAsync(recurso.Id, manana).Returns([]);
+
+        var result = await _useCase.ExecuteAsync(negocio.Slug, recurso.Id, manana);
+
+        result.IsSuccess.Should().BeTrue();
+        // Todo el día de mañana (08:00-20:00) queda a menos de 24hs de las 20:00 de hoy.
+        result.Value.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ConFechaPasada_DevuelveFailure()
     {
         var result = await _useCase.ExecuteAsync(

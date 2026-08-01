@@ -19,6 +19,7 @@ public class NegocioConfiguration : IEntityTypeConfiguration<Negocio>
         builder.Property(n => n.Direccion).HasMaxLength(250);
         builder.Property(n => n.Telefono).HasMaxLength(30);
         builder.Property(n => n.Email).HasMaxLength(200).IsRequired();
+        builder.Property(n => n.AnticipacionMinimaHoras).HasDefaultValue(0);
 
         // El slug identifica al negocio en el link público de reservas (ej. instagram bio link).
         builder.HasIndex(n => n.Slug).IsUnique();

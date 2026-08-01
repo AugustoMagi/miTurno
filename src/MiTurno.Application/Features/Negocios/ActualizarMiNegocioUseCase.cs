@@ -34,7 +34,9 @@ public class ActualizarMiNegocioUseCase
 
         try
         {
-            negocio.ActualizarDatos(request.Nombre, request.Descripcion, request.Direccion, request.Telefono);
+            negocio.ActualizarDatos(
+                request.Nombre, request.Descripcion, request.Direccion, request.Telefono,
+                request.AnticipacionMinimaHoras);
             _negocioRepository.Update(negocio);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 

@@ -13,5 +13,6 @@ internal static class NegocioMapper
         negocio.Direccion,
         negocio.Telefono,
         negocio.Email,
-        negocio.Activo);
+        negocio.Activo,
+        negocio.AnticipacionMinimaHoras);
 }
