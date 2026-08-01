@@ -7,7 +7,8 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input } from '../../components/Input'
+import { CheckIcon, LockIcon, MailIcon, UserIcon } from '../../components/icons'
 import { validarEmail, validarPassword, validarRequerido } from '../../utils/validation'
 
 export function PerfilPage() {
@@ -113,36 +114,39 @@ export function PerfilPage() {
           </span>
         </div>
         <form className="flex flex-col gap-4" onSubmit={handleGuardarDatos}>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Nombre
-            <input
+          <Field label="Nombre" error={datosTocado.nombre ? errorNombre : undefined} required>
+            <Input
               type="text"
               required
               maxLength={150}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              icon={<UserIcon />}
               value={nombre}
               onChange={(event) => setNombre(event.target.value)}
               onBlur={() => setDatosTocado((t) => ({ ...t, nombre: true }))}
+              aria-invalid={Boolean(datosTocado.nombre && errorNombre)}
             />
-            {datosTocado.nombre && <FieldError message={errorNombre} />}
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Email
-            <input
+          </Field>
+          <Field label="Email" error={datosTocado.email ? errorEmail : undefined} required>
+            <Input
               type="email"
               required
               maxLength={200}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              icon={<MailIcon />}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               onBlur={() => setDatosTocado((t) => ({ ...t, email: true }))}
+              aria-invalid={Boolean(datosTocado.email && errorEmail)}
             />
-            {datosTocado.email && <FieldError message={errorEmail} />}
-          </label>
+          </Field>
           {datosError && <ErrorBanner message={datosError} />}
-          {datosOk && <p className="text-sm text-emerald-700">Datos actualizados.</p>}
-          <Button type="submit" disabled={guardando} className="self-start">
-            {guardando ? 'Guardando…' : 'Guardar cambios'}
+          {datosOk && (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+              <CheckIcon className="h-4 w-4" />
+              Datos actualizados.
+            </p>
+          )}
+          <Button type="submit" loading={guardando} className="self-start">
+            Guardar cambios
           </Button>
         </form>
       </Card>
@@ -150,48 +154,54 @@ export function PerfilPage() {
       <Card className="flex flex-col gap-4">
         <h2 className="font-semibold text-slate-900">Cambiar contraseña</h2>
         <form className="flex flex-col gap-4" onSubmit={handleCambiarPassword}>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Contraseña actual
-            <input
+          <Field label="Contraseña actual" error={passwordTocado.actual ? errorPasswordActual : undefined} required>
+            <Input
               type="password"
               required
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              icon={<LockIcon />}
               value={passwordActual}
               onChange={(event) => setPasswordActual(event.target.value)}
               onBlur={() => setPasswordTocado((t) => ({ ...t, actual: true }))}
+              aria-invalid={Boolean(passwordTocado.actual && errorPasswordActual)}
             />
-            {passwordTocado.actual && <FieldError message={errorPasswordActual} />}
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Contraseña nueva
-            <input
+          </Field>
+          <Field label="Contraseña nueva" error={passwordTocado.nueva ? errorPasswordNueva : undefined} required>
+            <Input
               type="password"
               required
               minLength={8}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              icon={<LockIcon />}
               value={passwordNueva}
               onChange={(event) => setPasswordNueva(event.target.value)}
               onBlur={() => setPasswordTocado((t) => ({ ...t, nueva: true }))}
+              aria-invalid={Boolean(passwordTocado.nueva && errorPasswordNueva)}
             />
-            {passwordTocado.nueva && <FieldError message={errorPasswordNueva} />}
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Repetir contraseña nueva
-            <input
+          </Field>
+          <Field
+            label="Repetir contraseña nueva"
+            error={passwordTocado.confirmar ? errorPasswordConfirmar : undefined}
+            required
+          >
+            <Input
               type="password"
               required
               minLength={8}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+              icon={<LockIcon />}
               value={passwordConfirmar}
               onChange={(event) => setPasswordConfirmar(event.target.value)}
               onBlur={() => setPasswordTocado((t) => ({ ...t, confirmar: true }))}
+              aria-invalid={Boolean(passwordTocado.confirmar && errorPasswordConfirmar)}
             />
-            {passwordTocado.confirmar && <FieldError message={errorPasswordConfirmar} />}
-          </label>
+          </Field>
           {passwordError && <ErrorBanner message={passwordError} />}
-          {passwordOk && <p className="text-sm text-emerald-700">Contraseña actualizada.</p>}
-          <Button type="submit" disabled={cambiandoPassword} className="self-start">
-            {cambiandoPassword ? 'Guardando…' : 'Cambiar contraseña'}
+          {passwordOk && (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+              <CheckIcon className="h-4 w-4" />
+              Contraseña actualizada.
+            </p>
+          )}
+          <Button type="submit" loading={cambiandoPassword} className="self-start">
+            Cambiar contraseña
           </Button>
         </form>
       </Card>

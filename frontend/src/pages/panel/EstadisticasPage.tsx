@@ -4,9 +4,11 @@ import { extractError } from '../../api/client'
 import { EstadoReserva } from '../../types/negocio'
 import type { EstadisticasOcupacion } from '../../types/estadisticas'
 import { Card } from '../../components/Card'
+import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input } from '../../components/Input'
+import { CalendarIcon, ChartIcon, CreditCardIcon } from '../../components/icons'
 import { validarRangoFechas } from '../../utils/validation'
 
 const ESTADO_LABEL: Record<EstadoReserva, string> = {
@@ -14,6 +16,13 @@ const ESTADO_LABEL: Record<EstadoReserva, string> = {
   [EstadoReserva.Confirmada]: 'Confirmadas',
   [EstadoReserva.Cancelada]: 'Canceladas',
   [EstadoReserva.Completada]: 'Completadas',
+}
+
+const ESTADO_DOT: Record<EstadoReserva, string> = {
+  [EstadoReserva.Pendiente]: 'bg-amber-400',
+  [EstadoReserva.Confirmada]: 'bg-emerald-500',
+  [EstadoReserva.Cancelada]: 'bg-red-400',
+  [EstadoReserva.Completada]: 'bg-link-400',
 }
 
 export function EstadisticasPage() {
@@ -49,33 +58,17 @@ export function EstadisticasPage() {
             cargar()
           }}
         >
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Desde
-            <input
-              type="date"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-              value={desde}
-              onChange={(event) => setDesde(event.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Hasta
-            <input
-              type="date"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-              value={hasta}
-              onChange={(event) => setHasta(event.target.value)}
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={!!errorRango}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Field label="Desde">
+            <Input type="date" value={desde} onChange={(event) => setDesde(event.target.value)} className="w-auto" />
+          </Field>
+          <Field label="Hasta">
+            <Input type="date" value={hasta} onChange={(event) => setHasta(event.target.value)} className="w-auto" />
+          </Field>
+          <Button type="submit" disabled={!!errorRango}>
             Filtrar
-          </button>
+          </Button>
         </form>
-        {errorRango && <FieldError message={errorRango} />}
+        {errorRango && <p className="mt-2 text-xs font-normal text-red-600">{errorRango}</p>}
       </Card>
 
       {error && <ErrorBanner message={error} />}
@@ -85,45 +78,69 @@ export function EstadisticasPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Card>
-              <p className="text-sm text-slate-500">Ingresos totales</p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-700">
-                ${estadisticas.ingresosTotales.toLocaleString('es-AR')}
-              </p>
+            <Card className="flex items-center gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-accent-600">
+                <CreditCardIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm text-slate-500">Ingresos totales</p>
+                <p className="mt-0.5 text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+                  ${estadisticas.ingresosTotales.toLocaleString('es-AR')}
+                </p>
+              </div>
             </Card>
-            <Card>
-              <p className="text-sm text-slate-500">Total de reservas</p>
-              <p className="mt-1 text-2xl font-semibold text-slate-900">{estadisticas.totalReservas}</p>
+            <Card className="flex items-center gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-link-50 text-link-600">
+                <CalendarIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm text-slate-500">Total de reservas</p>
+                <p className="mt-0.5 text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+                  {estadisticas.totalReservas}
+                </p>
+              </div>
             </Card>
           </div>
 
           <Card>
             <h2 className="font-semibold text-slate-900">Reservas por estado</h2>
-            <div className="mt-3 flex flex-wrap gap-4 text-sm">
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {estadisticas.reservasPorEstado.map((item) => (
-                <div key={item.estado}>
-                  <p className="text-slate-500">{ESTADO_LABEL[item.estado]}</p>
-                  <p className="font-semibold text-slate-900">{item.cantidad}</p>
+                <div key={item.estado} className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <span className={`h-1.5 w-1.5 rounded-full ${ESTADO_DOT[item.estado]}`} />
+                    {ESTADO_LABEL[item.estado]}
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+                    {item.cantidad}
+                  </p>
                 </div>
               ))}
             </div>
           </Card>
 
           <Card>
-            <h2 className="font-semibold text-slate-900">Ocupación por recurso</h2>
-            <div className="mt-3 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <ChartIcon className="h-4.5 w-4.5 text-slate-400" />
+              <h2 className="font-semibold text-slate-900">Ocupación por recurso</h2>
+            </div>
+            <div className="mt-4 flex flex-col gap-3">
               {estadisticas.ocupacionPorRecurso.length === 0 ? (
                 <p className="text-sm text-slate-500">Sin datos todavía.</p>
               ) : (
                 estadisticas.ocupacionPorRecurso.map((recurso) => (
-                  <div key={recurso.recursoId} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                  <div
+                    key={recurso.recursoId}
+                    className="rounded-xl border border-slate-200 px-4 py-3 text-sm transition-colors duration-200 hover:bg-slate-50"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-slate-900">{recurso.recursoNombre}</span>
                       <span className="text-slate-500">{recurso.totalReservas} reserva(s)</span>
                     </div>
-                    <div className="mt-1 flex flex-wrap gap-3 text-slate-500">
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                       {recurso.reservasPorEstado.map((item) => (
-                        <span key={item.estado}>
+                        <span key={item.estado} className="flex items-center gap-1.5">
+                          <span className={`h-1.5 w-1.5 rounded-full ${ESTADO_DOT[item.estado]}`} />
                           {ESTADO_LABEL[item.estado]}: {item.cantidad}
                         </span>
                       ))}

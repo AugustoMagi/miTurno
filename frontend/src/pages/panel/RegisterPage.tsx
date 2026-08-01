@@ -6,7 +6,8 @@ import { useAuth } from '../../context/AuthContext'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input } from '../../components/Input'
+import { BuildingIcon, LockIcon, MailIcon, UserIcon } from '../../components/icons'
 import { validarEmail, validarPassword, validarRequerido, validarSlug } from '../../utils/validation'
 
 // Deriva un slug razonable del nombre del negocio; el usuario puede después ajustarlo a mano,
@@ -96,122 +97,121 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4 py-10">
-      <div className="w-full max-w-sm">
-        <p className="mb-6 text-center text-xl font-semibold text-slate-900">
-          Mi<span className="text-emerald-600">Turno</span>
-        </p>
+    <div className="bg-dotted flex min-h-svh items-center justify-center px-4 py-10">
+      <div className="animate-fade-in-up w-full max-w-sm">
+        <div className="mb-6 flex items-center justify-center gap-2">
+          <img src="/logo.png" alt="MiTurno" className="h-9 w-9 rounded-xl object-cover shadow-soft" />
+          <p className="text-xl font-bold tracking-tight text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+            Mi<span className="text-accent-500">Turno</span>
+          </p>
+        </div>
         <Card>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <h1 className="text-lg font-semibold text-slate-900">Creá tu negocio</h1>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Nombre del negocio
-              <input
+            <Field label="Nombre del negocio" error={tocado.nombreNegocio ? errorNombreNegocio : undefined} required>
+              <Input
                 type="text"
                 required
                 maxLength={150}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                icon={<BuildingIcon />}
                 value={nombreNegocio}
                 onChange={(event) => handleNombreNegocioChange(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, nombreNegocio: true }))}
+                aria-invalid={Boolean(tocado.nombreNegocio && errorNombreNegocio)}
               />
-              {tocado.nombreNegocio && <FieldError message={errorNombreNegocio} />}
-            </label>
+            </Field>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Slug (URL pública)
-              <input
+            <Field
+              label="Slug (URL pública)"
+              error={tocado.slug ? errorSlug : undefined}
+              hint={slug ? `www.miturno.fun/${slug}` : undefined}
+              required
+            >
+              <Input
                 type="text"
                 required
                 maxLength={100}
                 pattern="[a-z0-9\-]+"
                 title="Solo minúsculas, números y guiones"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={slug}
                 onChange={(event) => {
                   setSlugTocado(true)
                   setSlug(event.target.value)
                 }}
                 onBlur={() => setTocado((t) => ({ ...t, slug: true }))}
+                aria-invalid={Boolean(tocado.slug && errorSlug)}
               />
-              {slug && !(tocado.slug && errorSlug) && (
-                <span className="text-xs font-normal text-slate-500">www.miturno.fun/{slug}</span>
-              )}
-              {tocado.slug && <FieldError message={errorSlug} />}
-            </label>
+            </Field>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Email del negocio
-              <input
+            <Field label="Email del negocio" error={tocado.emailNegocio ? errorEmailNegocio : undefined} required>
+              <Input
                 type="email"
                 required
                 maxLength={200}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                icon={<MailIcon />}
                 value={emailNegocio}
                 onChange={(event) => setEmailNegocio(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, emailNegocio: true }))}
+                aria-invalid={Boolean(tocado.emailNegocio && errorEmailNegocio)}
               />
-              {tocado.emailNegocio && <FieldError message={errorEmailNegocio} />}
-            </label>
+            </Field>
 
             <hr className="border-slate-200" />
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Tu nombre
-              <input
+            <Field label="Tu nombre" error={tocado.nombreUsuario ? errorNombreUsuario : undefined} required>
+              <Input
                 type="text"
                 required
                 maxLength={150}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                icon={<UserIcon />}
                 value={nombreUsuario}
                 onChange={(event) => setNombreUsuario(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, nombreUsuario: true }))}
+                aria-invalid={Boolean(tocado.nombreUsuario && errorNombreUsuario)}
               />
-              {tocado.nombreUsuario && <FieldError message={errorNombreUsuario} />}
-            </label>
+            </Field>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Tu email (para ingresar)
-              <input
+            <Field label="Tu email (para ingresar)" error={tocado.emailUsuario ? errorEmailUsuario : undefined} required>
+              <Input
                 type="email"
                 required
                 maxLength={200}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                icon={<MailIcon />}
                 value={emailUsuario}
                 onChange={(event) => setEmailUsuario(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, emailUsuario: true }))}
+                aria-invalid={Boolean(tocado.emailUsuario && errorEmailUsuario)}
               />
-              {tocado.emailUsuario && <FieldError message={errorEmailUsuario} />}
-            </label>
+            </Field>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Contraseña
-              <input
+            <Field
+              label="Contraseña"
+              error={tocado.password ? errorPassword : undefined}
+              hint={!tocado.password ? 'Mínimo 8 caracteres.' : undefined}
+              required
+            >
+              <Input
                 type="password"
                 required
                 minLength={8}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                icon={<LockIcon />}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, password: true }))}
+                aria-invalid={Boolean(tocado.password && errorPassword)}
               />
-              {tocado.password ? (
-                <FieldError message={errorPassword} />
-              ) : (
-                <span className="text-xs font-normal text-slate-500">Mínimo 8 caracteres.</span>
-              )}
-            </label>
+            </Field>
 
             {error && <ErrorBanner message={error} />}
 
-            <Button type="submit" disabled={enviando}>
-              {enviando ? 'Creando…' : 'Crear negocio'}
+            <Button type="submit" loading={enviando}>
+              Crear negocio
             </Button>
 
             <p className="text-center text-sm text-slate-600">
               ¿Ya tenés cuenta?{' '}
-              <Link to="/panel/login" className="font-medium text-emerald-600 hover:underline">
+              <Link to="/panel/login" className="font-medium text-link-600 hover:text-link-700 hover:underline">
                 Ingresá
               </Link>
             </p>

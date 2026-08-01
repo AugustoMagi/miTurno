@@ -5,7 +5,8 @@ import { extractError } from '../../api/client'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input } from '../../components/Input'
+import { MailIcon } from '../../components/icons'
 import { validarEmail } from '../../utils/validation'
 
 export function OlvidePasswordPage() {
@@ -34,11 +35,14 @@ export function OlvidePasswordPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm">
-        <p className="mb-6 text-center text-xl font-semibold text-slate-900">
-          Mi<span className="text-emerald-600">Turno</span>
-        </p>
+    <div className="bg-dotted flex min-h-svh items-center justify-center px-4">
+      <div className="animate-fade-in-up w-full max-w-sm">
+        <div className="mb-6 flex items-center justify-center gap-2">
+          <img src="/logo.png" alt="MiTurno" className="h-9 w-9 rounded-xl object-cover shadow-soft" />
+          <p className="text-xl font-bold tracking-tight text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+            Mi<span className="text-accent-500">Turno</span>
+          </p>
+        </div>
         <Card>
           {enviado ? (
             <div className="flex flex-col gap-4">
@@ -47,7 +51,7 @@ export function OlvidePasswordPage() {
                 Si <span className="font-medium">{email}</span> está registrado, te enviamos un link para
                 restablecer tu contraseña. Vence en 30 minutos.
               </p>
-              <Link to="/panel/login" className="text-center text-sm font-medium text-emerald-600 hover:underline">
+              <Link to="/panel/login" className="text-center text-sm font-medium text-link-600 hover:text-link-700 hover:underline">
                 Volver a ingresar
               </Link>
             </div>
@@ -58,26 +62,25 @@ export function OlvidePasswordPage() {
                 Ingresá tu email y te mandamos un link para elegir una contraseña nueva.
               </p>
 
-              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                Email
-                <input
+              <Field label="Email" error={tocado ? errorEmail : undefined} required>
+                <Input
                   type="email"
                   required
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                  icon={<MailIcon />}
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   onBlur={() => setTocado(true)}
+                  aria-invalid={Boolean(tocado && errorEmail)}
                 />
-                {tocado && <FieldError message={errorEmail} />}
-              </label>
+              </Field>
 
               {error && <ErrorBanner message={error} />}
 
-              <Button type="submit" disabled={enviando}>
-                {enviando ? 'Enviando…' : 'Enviar link'}
+              <Button type="submit" loading={enviando}>
+                Enviar link
               </Button>
 
-              <Link to="/panel/login" className="text-center text-sm text-emerald-600 hover:underline">
+              <Link to="/panel/login" className="text-center text-sm font-medium text-link-600 hover:text-link-700 hover:underline">
                 Volver a ingresar
               </Link>
             </form>

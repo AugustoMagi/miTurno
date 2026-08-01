@@ -3,9 +3,11 @@ import { obtenerFacturacion } from '../../api/facturacionAdmin'
 import { extractError } from '../../api/client'
 import type { FacturacionPlataforma } from '../../types/facturacionAdmin'
 import { Card } from '../../components/Card'
+import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input } from '../../components/Input'
+import { CreditCardIcon, ReceiptIcon } from '../../components/icons'
 import { validarRangoFechas } from '../../utils/validation'
 
 export function FacturacionPage() {
@@ -45,33 +47,17 @@ export function FacturacionPage() {
             cargar()
           }}
         >
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Desde
-            <input
-              type="date"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-              value={desde}
-              onChange={(event) => setDesde(event.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Hasta
-            <input
-              type="date"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-              value={hasta}
-              onChange={(event) => setHasta(event.target.value)}
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={!!errorRango}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Field label="Desde">
+            <Input type="date" value={desde} onChange={(event) => setDesde(event.target.value)} className="w-auto" />
+          </Field>
+          <Field label="Hasta">
+            <Input type="date" value={hasta} onChange={(event) => setHasta(event.target.value)} className="w-auto" />
+          </Field>
+          <Button type="submit" disabled={!!errorRango}>
             Filtrar
-          </button>
+          </Button>
         </form>
-        {errorRango && <FieldError message={errorRango} />}
+        {errorRango && <p className="mt-2 text-xs font-normal text-red-600">{errorRango}</p>}
       </Card>
 
       {error && <ErrorBanner message={error} />}
@@ -81,15 +67,27 @@ export function FacturacionPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Card>
-              <p className="text-sm text-slate-500">Total facturado</p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-700">
-                ${facturacion.totalFacturado.toLocaleString('es-AR')}
-              </p>
+            <Card className="flex items-center gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-accent-600">
+                <CreditCardIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm text-slate-500">Total facturado</p>
+                <p className="mt-0.5 text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+                  ${facturacion.totalFacturado.toLocaleString('es-AR')}
+                </p>
+              </div>
             </Card>
-            <Card>
-              <p className="text-sm text-slate-500">Cantidad de pagos</p>
-              <p className="mt-1 text-2xl font-semibold text-slate-900">{facturacion.cantidadPagos}</p>
+            <Card className="flex items-center gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-link-50 text-link-600">
+                <ReceiptIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm text-slate-500">Cantidad de pagos</p>
+                <p className="mt-0.5 text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+                  {facturacion.cantidadPagos}
+                </p>
+              </div>
             </Card>
           </div>
 
@@ -102,11 +100,11 @@ export function FacturacionPage() {
                 {facturacion.porPlan.map((item) => (
                   <div
                     key={item.planId}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-2.5 text-sm transition-colors duration-200 hover:bg-slate-50"
                   >
                     <span className="font-medium text-slate-900">{item.planNombre}</span>
                     <span className="text-slate-500">{item.cantidadPagos} pago(s)</span>
-                    <span className="font-semibold text-emerald-700">
+                    <span className="font-semibold text-accent-600">
                       ${item.total.toLocaleString('es-AR')}
                     </span>
                   </div>
@@ -124,11 +122,11 @@ export function FacturacionPage() {
                 {facturacion.porNegocio.map((item) => (
                   <div
                     key={item.negocioId}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-2.5 text-sm transition-colors duration-200 hover:bg-slate-50"
                   >
                     <span className="font-medium text-slate-900">{item.negocioNombre}</span>
                     <span className="text-slate-500">{item.cantidadPagos} pago(s)</span>
-                    <span className="font-semibold text-emerald-700">
+                    <span className="font-semibold text-accent-600">
                       ${item.total.toLocaleString('es-AR')}
                     </span>
                   </div>

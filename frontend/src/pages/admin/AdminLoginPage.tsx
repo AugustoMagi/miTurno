@@ -6,7 +6,8 @@ import { useAdminAuth } from '../../context/AdminAuthContext'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input } from '../../components/Input'
+import { LockIcon, MailIcon } from '../../components/icons'
 import { validarEmail, validarRequerido } from '../../utils/validation'
 
 export function AdminLoginPage() {
@@ -44,45 +45,46 @@ export function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm">
-        <p className="mb-6 text-center text-xl font-semibold text-slate-900">
-          Mi<span className="text-emerald-600">Turno</span> <span className="text-slate-400">Admin</span>
-        </p>
+    <div className="bg-dotted flex min-h-svh items-center justify-center px-4">
+      <div className="animate-fade-in-up w-full max-w-sm">
+        <div className="mb-6 flex items-center justify-center gap-2">
+          <img src="/logo.png" alt="MiTurno" className="h-9 w-9 rounded-xl object-cover shadow-soft" />
+          <p className="text-xl font-bold tracking-tight text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+            Mi<span className="text-accent-500">Turno</span> <span className="text-slate-400">Admin</span>
+          </p>
+        </div>
         <Card>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <h1 className="text-lg font-semibold text-slate-900">Acceso de plataforma</h1>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Email
-              <input
+            <Field label="Email" error={tocado.email ? errorEmail : undefined} required>
+              <Input
                 type="email"
                 required
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                icon={<MailIcon />}
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, email: true }))}
+                aria-invalid={Boolean(tocado.email && errorEmail)}
               />
-              {tocado.email && <FieldError message={errorEmail} />}
-            </label>
+            </Field>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Contraseña
-              <input
+            <Field label="Contraseña" error={tocado.password ? errorPassword : undefined} required>
+              <Input
                 type="password"
                 required
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                icon={<LockIcon />}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, password: true }))}
+                aria-invalid={Boolean(tocado.password && errorPassword)}
               />
-              {tocado.password && <FieldError message={errorPassword} />}
-            </label>
+            </Field>
 
             {error && <ErrorBanner message={error} />}
 
-            <Button type="submit" disabled={enviando}>
-              {enviando ? 'Ingresando…' : 'Ingresar'}
+            <Button type="submit" loading={enviando}>
+              Ingresar
             </Button>
           </form>
         </Card>

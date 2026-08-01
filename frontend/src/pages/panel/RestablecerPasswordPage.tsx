@@ -5,7 +5,8 @@ import { extractError } from '../../api/client'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input } from '../../components/Input'
+import { LockIcon } from '../../components/icons'
 import { validarConfirmacionPassword, validarPassword } from '../../utils/validation'
 
 export function RestablecerPasswordPage() {
@@ -39,11 +40,14 @@ export function RestablecerPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm">
-        <p className="mb-6 text-center text-xl font-semibold text-slate-900">
-          Mi<span className="text-emerald-600">Turno</span>
-        </p>
+    <div className="bg-dotted flex min-h-svh items-center justify-center px-4">
+      <div className="animate-fade-in-up w-full max-w-sm">
+        <div className="mb-6 flex items-center justify-center gap-2">
+          <img src="/logo.png" alt="MiTurno" className="h-9 w-9 rounded-xl object-cover shadow-soft" />
+          <p className="text-xl font-bold tracking-tight text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+            Mi<span className="text-accent-500">Turno</span>
+          </p>
+        </div>
         <Card>
           {!token ? (
             <div className="flex flex-col gap-4">
@@ -53,7 +57,7 @@ export function RestablecerPasswordPage() {
               </p>
               <Link
                 to="/panel/olvide-password"
-                className="text-center text-sm font-medium text-emerald-600 hover:underline"
+                className="text-center text-sm font-medium text-link-600 hover:text-link-700 hover:underline"
               >
                 Pedir un link nuevo
               </Link>
@@ -62,38 +66,36 @@ export function RestablecerPasswordPage() {
             <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
               <h1 className="text-lg font-semibold text-slate-900">Elegí una contraseña nueva</h1>
 
-              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                Contraseña nueva
-                <input
+              <Field label="Contraseña nueva" error={tocado.nueva ? errorPasswordNueva : undefined} required>
+                <Input
                   type="password"
                   required
                   minLength={8}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                  icon={<LockIcon />}
                   value={passwordNueva}
                   onChange={(event) => setPasswordNueva(event.target.value)}
                   onBlur={() => setTocado((t) => ({ ...t, nueva: true }))}
+                  aria-invalid={Boolean(tocado.nueva && errorPasswordNueva)}
                 />
-                {tocado.nueva && <FieldError message={errorPasswordNueva} />}
-              </label>
+              </Field>
 
-              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                Repetir contraseña nueva
-                <input
+              <Field label="Repetir contraseña nueva" error={tocado.confirmar ? errorPasswordConfirmar : undefined} required>
+                <Input
                   type="password"
                   required
                   minLength={8}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                  icon={<LockIcon />}
                   value={passwordConfirmar}
                   onChange={(event) => setPasswordConfirmar(event.target.value)}
                   onBlur={() => setTocado((t) => ({ ...t, confirmar: true }))}
+                  aria-invalid={Boolean(tocado.confirmar && errorPasswordConfirmar)}
                 />
-                {tocado.confirmar && <FieldError message={errorPasswordConfirmar} />}
-              </label>
+              </Field>
 
               {error && <ErrorBanner message={error} />}
 
-              <Button type="submit" disabled={enviando}>
-                {enviando ? 'Guardando…' : 'Restablecer contraseña'}
+              <Button type="submit" loading={enviando}>
+                Restablecer contraseña
               </Button>
             </form>
           )}

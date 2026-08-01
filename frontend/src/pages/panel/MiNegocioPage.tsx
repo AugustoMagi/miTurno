@@ -6,7 +6,8 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input, Textarea } from '../../components/Input'
+import { CheckIcon } from '../../components/icons'
 import { validarRequerido, validarTelefono } from '../../utils/validation'
 
 export function MiNegocioPage() {
@@ -86,12 +87,12 @@ export function MiNegocioPage() {
             href={link}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:underline"
+            className="rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-link-600 hover:underline"
           >
             {link}
           </a>
-          <Button type="button" variant="secondary" onClick={handleCopiar}>
-            {copiado ? 'Copiado ✓' : 'Copiar link'}
+          <Button type="button" variant="secondary" icon={copiado ? <CheckIcon /> : undefined} onClick={handleCopiar}>
+            {copiado ? 'Copiado' : 'Copiar link'}
           </Button>
         </div>
       </Card>
@@ -100,54 +101,46 @@ export function MiNegocioPage() {
         <form className="flex flex-col gap-4" onSubmit={handleGuardar}>
           <h2 className="font-semibold text-slate-900">Datos del negocio</h2>
 
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Nombre
-            <input
+          <Field label="Nombre" error={tocado.nombre ? errorNombre : undefined} required>
+            <Input
               type="text"
               required
               maxLength={150}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={nombre}
               onChange={(event) => setNombre(event.target.value)}
               onBlur={() => setTocado((t) => ({ ...t, nombre: true }))}
+              aria-invalid={Boolean(tocado.nombre && errorNombre)}
             />
-            {tocado.nombre && <FieldError message={errorNombre} />}
-          </label>
+          </Field>
 
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Descripción
-            <textarea
+          <Field label="Descripción">
+            <Textarea
               maxLength={500}
               rows={3}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={descripcion}
               onChange={(event) => setDescripcion(event.target.value)}
             />
-          </label>
+          </Field>
 
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Dirección
-            <input
+          <Field label="Dirección">
+            <Input
               type="text"
               maxLength={200}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={direccion}
               onChange={(event) => setDireccion(event.target.value)}
             />
-          </label>
+          </Field>
 
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Teléfono
-            <input
+          <Field label="Teléfono" error={tocado.telefono ? errorTelefono : undefined}>
+            <Input
               type="tel"
               maxLength={30}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={telefono}
               onChange={(event) => setTelefono(event.target.value)}
               onBlur={() => setTocado((t) => ({ ...t, telefono: true }))}
+              aria-invalid={Boolean(tocado.telefono && errorTelefono)}
             />
-            {tocado.telefono && <FieldError message={errorTelefono} />}
-          </label>
+          </Field>
 
           <div className="grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1 text-sm">
@@ -164,9 +157,14 @@ export function MiNegocioPage() {
           </p>
 
           {formError && <ErrorBanner message={formError} />}
-          {guardadoOk && <p className="text-sm text-emerald-700">Guardado.</p>}
-          <Button type="submit" disabled={guardando} className="self-start">
-            {guardando ? 'Guardando…' : 'Guardar cambios'}
+          {guardadoOk && (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+              <CheckIcon className="h-4 w-4" />
+              Guardado.
+            </p>
+          )}
+          <Button type="submit" loading={guardando} className="self-start">
+            Guardar cambios
           </Button>
         </form>
       </Card>

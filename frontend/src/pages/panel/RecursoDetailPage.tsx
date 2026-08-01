@@ -12,7 +12,8 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input, Select } from '../../components/Input'
+import { AlertTriangleIcon, ArrowLeftIcon, CheckIcon, TrashIcon } from '../../components/icons'
 import {
   validarEntero,
   validarNumeroNoNegativo,
@@ -181,8 +182,12 @@ export function RecursoDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link to="/panel/recursos" className="text-sm text-emerald-700 hover:underline">
-          ← Recursos
+        <Link
+          to="/panel/recursos"
+          className="inline-flex items-center gap-1 text-sm font-medium text-link-600 hover:text-link-700"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Recursos
         </Link>
         <h1 className="mt-2 text-xl font-semibold text-slate-900">{recurso.nombre}</h1>
       </div>
@@ -191,63 +196,60 @@ export function RecursoDetailPage() {
         <form className="flex flex-col gap-4" onSubmit={handleGuardar}>
           <h2 className="font-semibold text-slate-900">Datos</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Nombre
-              <input
+            <Field label="Nombre" error={datosTocado.nombre ? errorNombre : undefined} required>
+              <Input
                 type="text"
                 required
                 maxLength={150}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={nombre}
                 onChange={(event) => setNombre(event.target.value)}
                 onBlur={() => setDatosTocado((t) => ({ ...t, nombre: true }))}
+                aria-invalid={Boolean(datosTocado.nombre && errorNombre)}
               />
-              {datosTocado.nombre && <FieldError message={errorNombre} />}
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Tipo
-              <input
+            </Field>
+            <Field label="Tipo" error={datosTocado.tipo ? errorTipo : undefined} required>
+              <Input
                 type="text"
                 required
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={tipo}
                 onChange={(event) => setTipo(event.target.value)}
                 onBlur={() => setDatosTocado((t) => ({ ...t, tipo: true }))}
+                aria-invalid={Boolean(datosTocado.tipo && errorTipo)}
               />
-              {datosTocado.tipo && <FieldError message={errorTipo} />}
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Duración del turno (min)
-              <input
+            </Field>
+            <Field label="Duración del turno (min)" error={datosTocado.duracion ? errorDuracion : undefined} required>
+              <Input
                 type="number"
                 required
                 min={1}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={duracionTurnoMinutos}
                 onChange={(event) => setDuracionTurnoMinutos(Number(event.target.value))}
                 onBlur={() => setDatosTocado((t) => ({ ...t, duracion: true }))}
+                aria-invalid={Boolean(datosTocado.duracion && errorDuracion)}
               />
-              {datosTocado.duracion && <FieldError message={errorDuracion} />}
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Precio
-              <input
+            </Field>
+            <Field label="Precio" error={datosTocado.precio ? errorPrecio : undefined} required>
+              <Input
                 type="number"
                 required
                 min={0}
                 step="0.01"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={precio}
                 onChange={(event) => setPrecio(Number(event.target.value))}
                 onBlur={() => setDatosTocado((t) => ({ ...t, precio: true }))}
+                aria-invalid={Boolean(datosTocado.precio && errorPrecio)}
               />
-              {datosTocado.precio && <FieldError message={errorPrecio} />}
-            </label>
+            </Field>
           </div>
           {guardadoError && <ErrorBanner message={guardadoError} />}
-          {guardadoOk && <p className="text-sm text-emerald-700">Guardado.</p>}
-          <Button type="submit" disabled={guardando} className="self-start">
-            {guardando ? 'Guardando…' : 'Guardar cambios'}
+          {guardadoOk && (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+              <CheckIcon className="h-4 w-4" />
+              Guardado.
+            </p>
+          )}
+          <Button type="submit" loading={guardando} className="self-start">
+            Guardar cambios
           </Button>
         </form>
       </Card>
@@ -255,40 +257,23 @@ export function RecursoDetailPage() {
       <Card>
         <h2 className="font-semibold text-slate-900">Horarios disponibles</h2>
         <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={handleAgregarHorario}>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Día
-            <select
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-              value={diaSemana}
-              onChange={(event) => setDiaSemana(Number(event.target.value))}
-            >
+          <Field label="Día">
+            <Select value={diaSemana} onChange={(event) => setDiaSemana(Number(event.target.value))} className="w-auto">
               {DIAS_SEMANA.map((dia) => (
                 <option key={dia.valor} value={dia.valor}>
                   {dia.nombre}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Desde
-            <input
-              type="time"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-              value={horaInicio}
-              onChange={(event) => setHoraInicio(event.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Hasta
-            <input
-              type="time"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-              value={horaFin}
-              onChange={(event) => setHoraFin(event.target.value)}
-            />
-          </label>
-          <Button type="submit" disabled={agregandoHorario}>
-            {agregandoHorario ? 'Agregando…' : 'Agregar'}
+            </Select>
+          </Field>
+          <Field label="Desde">
+            <Input type="time" value={horaInicio} onChange={(event) => setHoraInicio(event.target.value)} className="w-auto" />
+          </Field>
+          <Field label="Hasta">
+            <Input type="time" value={horaFin} onChange={(event) => setHoraFin(event.target.value)} className="w-auto" />
+          </Field>
+          <Button type="submit" loading={agregandoHorario}>
+            Agregar
           </Button>
         </form>
         {horarioError && (
@@ -308,7 +293,7 @@ export function RecursoDetailPage() {
               .map((horario) => (
                 <div
                   key={horario.id}
-                  className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                  className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-2.5 text-sm transition-colors duration-200 hover:bg-slate-50"
                 >
                   <span>
                     <span className="font-medium text-slate-900">{nombreDia(horario.diaSemana)}</span>{' '}
@@ -319,9 +304,10 @@ export function RecursoDetailPage() {
                   <button
                     type="button"
                     onClick={() => handleEliminarHorario(horario.id)}
-                    className="text-red-600 hover:underline"
+                    aria-label="Eliminar horario"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors duration-200 hover:bg-red-50 hover:text-red-700"
                   >
-                    Eliminar
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
               ))
@@ -332,27 +318,24 @@ export function RecursoDetailPage() {
       <Card>
         <h2 className="font-semibold text-slate-900">Bloqueos de fecha</h2>
         <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={handleAgregarBloqueo}>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Fecha
-            <input
+          <Field label="Fecha">
+            <Input
               type="date"
               required
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={fechaBloqueo}
               onChange={(event) => setFechaBloqueo(event.target.value)}
+              className="w-auto"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Motivo (opcional)
-            <input
+          </Field>
+          <Field label="Motivo (opcional)">
+            <Input
               type="text"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={motivoBloqueo}
               onChange={(event) => setMotivoBloqueo(event.target.value)}
             />
-          </label>
-          <Button type="submit" disabled={agregandoBloqueo}>
-            {agregandoBloqueo ? 'Bloqueando…' : 'Bloquear'}
+          </Field>
+          <Button type="submit" loading={agregandoBloqueo}>
+            Bloquear
           </Button>
         </form>
         {bloqueoError && (
@@ -361,18 +344,21 @@ export function RecursoDetailPage() {
           </div>
         )}
         {ultimoBloqueoAfectados && (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <p className="font-medium">
-              Ojo: {ultimoBloqueoAfectados.reservasAfectadas.length} reserva(s) activa(s) quedaron en esta fecha.
-              Avisales a estos clientes:
-            </p>
-            <ul className="mt-1 list-inside list-disc">
-              {ultimoBloqueoAfectados.reservasAfectadas.map((r) => (
-                <li key={r.id}>
-                  {r.clienteNombre} ({r.clienteEmail}) — {formatHora(r.horaInicio)} a {formatHora(r.horaFin)}
-                </li>
-              ))}
-            </ul>
+          <div className="animate-scale-in mt-3 flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-medium">
+                Ojo: {ultimoBloqueoAfectados.reservasAfectadas.length} reserva(s) activa(s) quedaron en esta fecha.
+                Avisales a estos clientes:
+              </p>
+              <ul className="mt-1 list-inside list-disc">
+                {ultimoBloqueoAfectados.reservasAfectadas.map((r) => (
+                  <li key={r.id}>
+                    {r.clienteNombre} ({r.clienteEmail}) — {formatHora(r.horaInicio)} a {formatHora(r.horaFin)}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
         <div className="mt-4 flex flex-col gap-2">
@@ -384,7 +370,7 @@ export function RecursoDetailPage() {
             bloqueos.map((bloqueo) => (
               <div
                 key={bloqueo.id}
-                className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-2.5 text-sm transition-colors duration-200 hover:bg-slate-50"
               >
                 <span>
                   <span className="font-medium text-slate-900">{bloqueo.fecha}</span>{' '}
@@ -393,9 +379,10 @@ export function RecursoDetailPage() {
                 <button
                   type="button"
                   onClick={() => handleEliminarBloqueo(bloqueo.id)}
-                  className="text-red-600 hover:underline"
+                  aria-label="Eliminar bloqueo"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors duration-200 hover:bg-red-50 hover:text-red-700"
                 >
-                  Eliminar
+                  <TrashIcon className="h-4 w-4" />
                 </button>
               </div>
             ))

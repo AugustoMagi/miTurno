@@ -18,6 +18,7 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { CheckIcon } from '../../components/icons'
 
 const ESTADO_LABEL: Record<EstadoSuscripcion, string> = {
   [EstadoSuscripcion.EnPrueba]: 'En prueba',
@@ -71,20 +72,22 @@ function PlanCard({
 }) {
   return (
     <div
-      className={`flex h-full flex-col gap-3 rounded-2xl border bg-white p-5 shadow-sm ${
-        esElActual ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-slate-200'
+      className={`flex h-full flex-col gap-3 rounded-xl border bg-white p-6 shadow-soft transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-lg ${
+        esElActual ? 'border-accent-300 ring-1 ring-accent-100' : 'border-slate-200'
       }`}
     >
       <div className="flex items-center gap-2">
         <h3 className="font-semibold text-slate-900">{plan.nombre}</h3>
         {esElActual && (
-          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+          <span className="rounded-full bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700">
             Tu plan actual
           </span>
         )}
       </div>
       <p className="text-slate-900">
-        <span className="text-2xl font-bold">${plan.precio.toLocaleString('es-AR')}</span>
+        <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-heading)' }}>
+          ${plan.precio.toLocaleString('es-AR')}
+        </span>
         <span className="text-sm text-slate-500"> / {PERIODICIDAD_LABEL[plan.periodicidad]}</span>
       </p>
       <ul className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
@@ -93,14 +96,13 @@ function PlanCard({
       </ul>
 
       {esElActual && cobroAutomaticoActivo ? (
-        <p className="text-sm text-emerald-700">✓ Cobro automático activo</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+          <CheckIcon className="h-4 w-4" />
+          Cobro automático activo
+        </p>
       ) : (
-        <Button disabled={procesando} onClick={onSeleccionar} className="mt-auto">
-          {procesando
-            ? 'Redirigiendo…'
-            : esElActual
-              ? 'Suscribirme con Mercado Pago'
-              : 'Cambiar a este plan'}
+        <Button loading={procesando} onClick={onSeleccionar} className="mt-auto">
+          {esElActual ? 'Suscribirme con Mercado Pago' : 'Cambiar a este plan'}
         </Button>
       )}
     </div>
@@ -235,7 +237,7 @@ export function MiSuscripcionPage() {
       <h1 className="text-xl font-semibold text-slate-900">Mi suscripción</h1>
 
       {vuelvoDeMercadoPago && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="rounded-xl border border-link-200 bg-link-50 px-4 py-3 text-sm text-link-700">
           Estamos confirmando tu suscripción con Mercado Pago. Puede tardar unos minutos en reflejarse acá.
         </div>
       )}
@@ -295,14 +297,14 @@ export function MiSuscripcionPage() {
               : 'Dejás de tener acceso al finalizar el período vigente.'}{' '}
             Podés volver a suscribirte cuando quieras.
           </p>
-          <button
-            type="button"
-            disabled={cancelando}
+          <Button
+            variant="secondary"
+            loading={cancelando}
             onClick={handleCancelar}
-            className="self-start rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            className="self-start border-red-300 text-red-600 hover:bg-red-50"
           >
-            {cancelando ? 'Cancelando…' : 'Cancelar suscripción'}
-          </button>
+            Cancelar suscripción
+          </Button>
         </Card>
       )}
     </div>

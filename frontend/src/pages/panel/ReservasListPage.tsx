@@ -9,8 +9,10 @@ import { extractError } from '../../api/client'
 import { EstadoReserva } from '../../types/negocio'
 import type { ReservaOwner } from '../../types/reservaOwner'
 import { Card } from '../../components/Card'
+import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { Input } from '../../components/Input'
 
 function formatHora(horaHms: string): string {
   return horaHms.slice(0, 5)
@@ -68,11 +70,11 @@ export function ReservasListPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-slate-900">Reservas</h1>
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          Filtrar por día
-          <input
+        <div className="flex items-center gap-2">
+          <Input
             type="date"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+            aria-label="Filtrar por día"
+            className="w-auto"
             value={filtroFecha}
             onChange={(event) => setFiltroFecha(event.target.value)}
           />
@@ -80,12 +82,12 @@ export function ReservasListPage() {
             <button
               type="button"
               onClick={() => setFiltroFecha('')}
-              className="text-emerald-700 hover:underline"
+              className="text-sm font-medium text-link-600 hover:text-link-700 hover:underline"
             >
               Ver todas
             </button>
           )}
-        </label>
+        </div>
       </div>
 
       {error && <ErrorBanner message={error} />}
@@ -97,58 +99,64 @@ export function ReservasListPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {reservasFiltradas.map((reserva) => (
-              <Card key={reserva.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900">{reserva.recursoNombre}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ESTADO_CLASSES[reserva.estado]}`}>
-                      {ESTADO_LABEL[reserva.estado]}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-500">
-                    {reserva.fecha} · {formatHora(reserva.horaInicio)} - {formatHora(reserva.horaFin)}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {reserva.clienteNombre} ({reserva.clienteEmail})
-                  </p>
-                  <p className="text-sm font-medium text-emerald-700">
-                    ${reserva.precioTotal.toLocaleString('es-AR')}
-                  </p>
+            <Card
+              key={reserva.id}
+              hover
+              className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-900">{reserva.recursoNombre}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ESTADO_CLASSES[reserva.estado]}`}>
+                    {ESTADO_LABEL[reserva.estado]}
+                  </span>
                 </div>
-                <div className="flex gap-2">
-                  {reserva.estado === EstadoReserva.Pendiente && (
-                    <>
-                      <button
-                        type="button"
-                        disabled={procesando === reserva.id}
-                        onClick={() => handleAccion(reserva.id, () => confirmarPagoReserva(reserva.id))}
-                        className="rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
-                      >
-                        Confirmar pago
-                      </button>
-                      <button
-                        type="button"
-                        disabled={procesando === reserva.id}
-                        onClick={() => handleAccion(reserva.id, () => rechazarPagoReserva(reserva.id))}
-                        className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        Rechazar pago
-                      </button>
-                    </>
-                  )}
-                  {reserva.estado !== EstadoReserva.Cancelada && reserva.estado !== EstadoReserva.Completada && (
-                    <button
-                      type="button"
-                      disabled={procesando === reserva.id}
-                      onClick={() => handleAccion(reserva.id, () => cancelarReserva(reserva.id))}
-                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                <p className="text-sm text-slate-500">
+                  {reserva.fecha} · {formatHora(reserva.horaInicio)} - {formatHora(reserva.horaFin)}
+                </p>
+                <p className="text-sm text-slate-500">
+                  {reserva.clienteNombre} ({reserva.clienteEmail})
+                </p>
+                <p className="text-sm font-semibold text-accent-600">
+                  ${reserva.precioTotal.toLocaleString('es-AR')}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {reserva.estado === EstadoReserva.Pendiente && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      loading={procesando === reserva.id}
+                      onClick={() => handleAccion(reserva.id, () => confirmarPagoReserva(reserva.id))}
+                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                     >
-                      Cancelar
-                    </button>
-                  )}
-                </div>
-              </Card>
-            ))}
+                      Confirmar pago
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      loading={procesando === reserva.id}
+                      onClick={() => handleAccion(reserva.id, () => rechazarPagoReserva(reserva.id))}
+                      className="border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      Rechazar pago
+                    </Button>
+                  </>
+                )}
+                {reserva.estado !== EstadoReserva.Cancelada && reserva.estado !== EstadoReserva.Completada && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={procesando === reserva.id}
+                    onClick={() => handleAccion(reserva.id, () => cancelarReserva(reserva.id))}
+                  >
+                    Cancelar
+                  </Button>
+                )}
+              </div>
+            </Card>
+          ))}
         </div>
       )}
     </div>

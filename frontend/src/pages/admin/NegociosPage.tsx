@@ -4,6 +4,7 @@ import { activarNegocio, desactivarNegocio, listarNegocios } from '../../api/neg
 import { extractError } from '../../api/client'
 import type { NegocioAdmin } from '../../types/negocioAdmin'
 import { Card } from '../../components/Card'
+import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
 
@@ -48,12 +49,12 @@ export function NegociosPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {negocios.map((negocio) => (
-            <Card key={negocio.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Card key={negocio.id} hover className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     to={`/admin/negocios/${negocio.id}`}
-                    className="font-semibold text-slate-900 hover:underline"
+                    className="font-semibold text-slate-900 hover:text-link-700"
                   >
                     {negocio.nombre}
                   </Link>
@@ -71,21 +72,18 @@ export function NegociosPage() {
               </div>
               <div className="flex gap-2">
                 <Link to={`/admin/negocios/${negocio.id}`}>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                  >
+                  <Button variant="secondary" size="sm">
                     Ver detalle
-                  </button>
+                  </Button>
                 </Link>
-                <button
-                  type="button"
-                  disabled={procesando === negocio.id}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={procesando === negocio.id}
                   onClick={() => handleCambiarEstado(negocio)}
-                  className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {negocio.activo ? 'Desactivar' : 'Activar'}
-                </button>
+                </Button>
               </div>
             </Card>
           ))}

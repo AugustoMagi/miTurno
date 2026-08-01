@@ -14,7 +14,7 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input, Select } from '../../components/Input'
 import { validarFechaNoPasada } from '../../utils/validation'
 
 function hoyIso(): string {
@@ -93,7 +93,7 @@ function FilaSuscripcion({ suscripcion, planes, onCambiada }: FilaProps) {
   }
 
   return (
-    <Card className="flex flex-col gap-3">
+    <Card hover className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-semibold text-slate-900">{suscripcion.negocioNombre}</p>
@@ -101,7 +101,7 @@ function FilaSuscripcion({ suscripcion, planes, onCambiada }: FilaProps) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {suscripcion.cobroAutomaticoActivo && (
-            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+            <span className="rounded-full bg-link-50 px-2 py-0.5 text-xs font-medium text-link-700">
               Cobro automático
             </span>
           )}
@@ -117,46 +117,41 @@ function FilaSuscripcion({ suscripcion, planes, onCambiada }: FilaProps) {
 
       {error && <ErrorBanner message={error} />}
 
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-          Cambiar de plan
-          <select
-            className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
-            value={nuevoPlanId}
-            onChange={(event) => setNuevoPlanId(event.target.value)}
-          >
+      <div className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
+        <Field label="Cambiar de plan">
+          <Select value={nuevoPlanId} onChange={(event) => setNuevoPlanId(event.target.value)} className="w-auto">
             <option value="">Elegir plan…</option>
             {planes.map((plan) => (
               <option key={plan.id} value={plan.id}>
                 {plan.nombre}
               </option>
             ))}
-          </select>
-        </label>
-        <Button variant="secondary" disabled={procesando || !nuevoPlanId} onClick={handleCambiarPlan}>
+          </Select>
+        </Field>
+        <Button variant="secondary" size="sm" disabled={!nuevoPlanId} loading={procesando} onClick={handleCambiarPlan}>
           Cambiar
         </Button>
 
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-          Renovar hasta
-          <input
+        <Field label="Renovar hasta" error={nuevoVencimiento ? errorVencimiento : undefined}>
+          <Input
             type="date"
-            className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
             value={nuevoVencimiento}
             onChange={(event) => setNuevoVencimiento(event.target.value)}
+            className="w-auto"
           />
-          {nuevoVencimiento && <FieldError message={errorVencimiento} />}
-        </label>
+        </Field>
         <Button
           variant="secondary"
-          disabled={procesando || !nuevoVencimiento || !!errorVencimiento}
+          size="sm"
+          disabled={!nuevoVencimiento || !!errorVencimiento}
+          loading={procesando}
           onClick={handleRenovar}
         >
           Renovar
         </Button>
 
         {suscripcion.estado !== EstadoSuscripcion.Cancelada && (
-          <Button variant="secondary" disabled={procesando} onClick={handleCancelar}>
+          <Button variant="secondary" size="sm" loading={procesando} onClick={handleCancelar}>
             Cancelar
           </Button>
         )}

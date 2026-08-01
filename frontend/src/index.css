@@ -2,11 +2,72 @@
 
 @theme {
   --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Manrope", "Inter", system-ui, sans-serif;
+
+  /* Naranja suave: botones y elementos interactivos primarios */
+  --color-accent-50: #fdf5f0;
+  --color-accent-100: #fae6d8;
+  --color-accent-200: #f3cba8;
+  --color-accent-300: #ecab78;
+  --color-accent-400: #e28e51;
+  --color-accent-500: #d97a3b;
+  --color-accent-600: #c1632a;
+  --color-accent-700: #9c4e22;
+  --color-accent-800: #793d1c;
+  --color-accent-900: #5c2f17;
+
+  /* Azul claro: enlaces, foco y estados activos */
+  --color-link-50: #eff6fc;
+  --color-link-100: #dcebf8;
+  --color-link-200: #b9d7f1;
+  --color-link-300: #8fc0e8;
+  --color-link-400: #62a6dc;
+  --color-link-500: #3e8bcb;
+  --color-link-600: #2e71ac;
+  --color-link-700: #24598a;
+  --color-link-800: #1d4569;
+  --color-link-900: #17364f;
+
+  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px -14px rgba(15, 23, 42, 0.16);
+  --shadow-soft-lg: 0 2px 4px rgba(15, 23, 42, 0.04), 0 20px 40px -16px rgba(15, 23, 42, 0.22);
 }
 
 body {
   @apply bg-slate-50 text-slate-900;
+  font-feature-settings: "cv11", "ss01";
 }
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+}
+
+::selection {
+  background-color: var(--color-accent-200);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-link-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+
+.shadow-soft-lg {
+  box-shadow: var(--shadow-soft-lg);
+}
+
+.bg-dotted {
+  background-color: #f8fafc;
+  background-image: radial-gradient(circle, rgba(100, 116, 139, 0.18) 1px, transparent 1.6px);
+  background-size: 22px 22px;
+}
+
 
 @keyframes blob-float {
   0%,
@@ -42,6 +103,23 @@ body {
   }
 }
 
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .animate-blob {
   animation: blob-float 9s ease-in-out infinite;
 }
@@ -59,6 +137,10 @@ body {
   animation: fade-in-up 0.7s ease-out both;
 }
 
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out both;
+}
+
 .reveal {
   opacity: 0;
   transform: translateY(24px);
@@ -74,7 +156,8 @@ body {
   .animate-blob,
   .animate-blob-delay,
   .animate-card-float,
-  .animate-fade-in-up {
+  .animate-fade-in-up,
+  .animate-scale-in {
     animation: none;
   }
 

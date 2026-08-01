@@ -7,6 +7,11 @@ import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
 
+function iniciales(nombre: string): string {
+  const partes = nombre.trim().split(/\s+/)
+  return ((partes[0]?.[0] ?? '') + (partes[1]?.[0] ?? '')).toUpperCase()
+}
+
 export function ClientesListPage() {
   const [clientes, setClientes] = useState<Cliente[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -29,14 +34,21 @@ export function ClientesListPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {clientes.map((cliente) => (
-            <Link key={cliente.id} to={`/panel/clientes/${cliente.id}`}>
-              <Card className="flex flex-col gap-1 transition-shadow hover:shadow-md sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-semibold text-slate-900">{cliente.nombre}</p>
-                  <p className="text-sm text-slate-500">
-                    {cliente.email}
-                    {cliente.telefono && ` · ${cliente.telefono}`}
-                  </p>
+            <Link key={cliente.id} to={`/panel/clientes/${cliente.id}`} className="group">
+              <Card hover className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-link-50 text-sm font-semibold text-link-700">
+                    {iniciales(cliente.nombre)}
+                  </span>
+                  <div>
+                    <p className="font-semibold text-slate-900 transition-colors duration-200 group-hover:text-link-700">
+                      {cliente.nombre}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {cliente.email}
+                      {cliente.telefono && ` · ${cliente.telefono}`}
+                    </p>
+                  </div>
                 </div>
                 <div className="text-sm text-slate-500 sm:text-right">
                   <p>{cliente.totalReservas} reserva(s)</p>

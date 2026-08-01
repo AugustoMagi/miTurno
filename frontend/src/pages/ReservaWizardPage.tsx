@@ -14,7 +14,8 @@ import { Card } from '../components/Card'
 import { Button } from '../components/Button'
 import { Spinner } from '../components/Spinner'
 import { ErrorBanner } from '../components/ErrorBanner'
-import { FieldError } from '../components/FieldError'
+import { Field, Input } from '../components/Input'
+import { ArrowLeftIcon, CheckIcon } from '../components/icons'
 import { validarEmail, validarRequerido, validarTelefono } from '../utils/validation'
 
 function todayIsoDate(): string {
@@ -185,9 +186,19 @@ export function ReservaWizardPage() {
   if (!recurso) return <Spinner label="Cargando…" />
 
   if (reserva) {
+    const confirmada = !cancelada && reserva.estado === EstadoReserva.Confirmada
     return (
-      <div className="mx-auto flex max-w-md flex-col gap-6">
-        <Card className="flex flex-col gap-4">
+      <div className="animate-fade-in-up mx-auto flex max-w-md flex-col gap-6">
+        <div className="relative">
+          {confirmada && (
+            <>
+              <div className="absolute inset-0 translate-x-2 translate-y-3 rotate-2 rounded-xl border-2 border-slate-900/15 bg-white" />
+              <span className="absolute -top-4 -right-4 z-10 flex h-16 w-16 rotate-12 items-center justify-center rounded-full border-2 border-dashed border-emerald-600 bg-emerald-50 text-center text-[10px] font-black tracking-wide text-emerald-700 uppercase">
+                Confirmado
+              </span>
+            </>
+          )}
+        <Card className="relative flex flex-col gap-4">
           <h1 className="text-xl font-semibold text-slate-900">
             {cancelada
               ? 'Reserva cancelada'
@@ -217,7 +228,8 @@ export function ReservaWizardPage() {
           {cancelada ? (
             <p className="text-sm text-slate-500">Tu reserva fue cancelada correctamente.</p>
           ) : reserva.estado === EstadoReserva.Confirmada ? (
-            <p className="text-sm text-emerald-700">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+              <CheckIcon className="h-4 w-4 shrink-0" />
               Tu pago se acreditó y el turno quedó confirmado. Te esperamos.
             </p>
           ) : reserva.estado === EstadoReserva.Cancelada ? (
@@ -236,12 +248,12 @@ export function ReservaWizardPage() {
               confirmada automáticamente.
             </p>
           ) : reserva.aliasPago ? (
-            <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-slate-700">
+            <div className="rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-slate-700">
               <p>
                 Transferí <span className="font-semibold">${reserva.precioTotal.toLocaleString('es-AR')}</span> a
                 este alias para confirmar tu turno:
               </p>
-              <p className="mt-1 font-mono text-base font-semibold text-emerald-800">
+              <p className="mt-1 font-mono text-base font-semibold text-accent-800">
                 {reserva.aliasPago}
               </p>
               <p className="mt-2 text-slate-500">
@@ -266,15 +278,16 @@ export function ReservaWizardPage() {
               <Button
                 variant="secondary"
                 className="flex-1"
-                disabled={cancelando}
+                loading={cancelando}
                 onClick={handleCancelar}
               >
-                {cancelando ? 'Cancelando…' : 'Cancelar reserva'}
+                Cancelar reserva
               </Button>
             </div>
           )}
         </Card>
-        <Link to={`/${slug}`} className="text-center text-sm text-emerald-700 hover:underline">
+        </div>
+        <Link to={`/${slug}`} className="text-center text-sm font-medium text-link-600 hover:text-link-700 hover:underline">
           Volver al negocio
         </Link>
       </div>
@@ -282,10 +295,14 @@ export function ReservaWizardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="animate-fade-in-up flex flex-col gap-6">
       <div>
-        <Link to={`/${slug}`} className="text-sm text-emerald-700 hover:underline">
-          ← Volver
+        <Link
+          to={`/${slug}`}
+          className="inline-flex items-center gap-1 text-sm font-medium text-link-600 hover:text-link-700"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Volver
         </Link>
         <h1 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">{recurso.nombre}</h1>
         <p className="text-sm text-slate-500">
@@ -293,17 +310,16 @@ export function ReservaWizardPage() {
         </p>
       </div>
 
-      <Card className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-          Elegí una fecha
-          <input
+      <div className="flex flex-col gap-4 rounded-xl border-2 border-slate-900 bg-white p-6 shadow-soft">
+        <Field label="Elegí una fecha">
+          <Input
             type="date"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none sm:w-56"
+            className="sm:w-56"
             min={todayIsoDate()}
             value={fecha}
             onChange={(event) => setFecha(event.target.value)}
           />
-        </label>
+        </Field>
 
         {turnosLoading ? (
           <Spinner label="Buscando horarios…" />
@@ -312,20 +328,20 @@ export function ReservaWizardPage() {
         ) : turnos.length === 0 ? (
           <p className="text-sm text-slate-500">No hay turnos disponibles ese día.</p>
         ) : turnoSeleccionado && !mostrarListaHorarios ? (
-          <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">
-            <span className="font-medium text-emerald-800">
+          <div className="flex items-center justify-between rounded-xl border border-accent-200 bg-accent-50 px-4 py-3 text-sm">
+            <span className="font-medium text-accent-800">
               Horario elegido: {formatHora(turnoSeleccionado.horaInicio)} - {formatHora(turnoSeleccionado.horaFin)}
             </span>
             <button
               type="button"
               onClick={() => setMostrarListaHorarios(true)}
-              className="font-medium text-emerald-700 hover:underline"
+              className="font-medium text-link-600 hover:text-link-700 hover:underline"
             >
               Cambiar
             </button>
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200">
+          <div className="flex max-h-80 flex-col divide-y divide-slate-200 overflow-y-auto rounded-xl border border-slate-200">
             {turnos.map((turno) => {
               const seleccionado = turno.horaInicio === turnoSeleccionado?.horaInicio
               return (
@@ -336,91 +352,72 @@ export function ReservaWizardPage() {
                     setTurnoSeleccionado(turno)
                     setMostrarListaHorarios(false)
                   }}
-                  className={`flex items-center justify-between border-l-4 px-4 py-3 text-left text-sm font-medium transition-colors ${
+                  className={`flex items-center justify-between border-l-4 px-4 py-3 text-left text-sm font-medium transition-colors duration-200 ${
                     seleccionado
-                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+                      ? 'border-accent-500 bg-accent-50 text-accent-800'
                       : esHoraEnPunto(turno.horaInicio)
-                        ? 'border-transparent bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        ? 'border-transparent bg-slate-50 text-slate-700 hover:bg-slate-100'
                         : 'border-transparent text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <span>
                     {formatHora(turno.horaInicio)} - {formatHora(turno.horaFin)}
                   </span>
-                  {seleccionado && (
-                    <svg
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="h-5 w-5 text-emerald-600"
-                      aria-hidden="true"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.704 5.29a1 1 0 010 1.415l-7.4 7.4a1 1 0 01-1.414 0l-3.6-3.6a1 1 0 111.414-1.414l2.893 2.893 6.693-6.693a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  )}
+                  {seleccionado && <CheckIcon className="h-4 w-4 text-accent-600" />}
                 </button>
               )
             })}
           </div>
         )}
-      </Card>
+      </div>
 
       {turnoSeleccionado && (
-        <Card>
+        <div className="animate-scale-in rounded-xl border-2 border-slate-900 bg-white p-6 shadow-soft">
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <h2 className="font-semibold text-slate-900">Tus datos</h2>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Nombre
-              <input
+            <Field label="Nombre" error={tocado.nombre ? errorNombre : undefined} required>
+              <Input
                 type="text"
                 required
                 maxLength={150}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={clienteNombre}
                 onChange={(event) => setClienteNombre(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, nombre: true }))}
+                aria-invalid={Boolean(tocado.nombre && errorNombre)}
               />
-              {tocado.nombre && <FieldError message={errorNombre} />}
-            </label>
+            </Field>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Email
-              <input
+            <Field label="Email" error={tocado.email ? errorEmail : undefined} required>
+              <Input
                 type="email"
                 required
                 maxLength={200}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={clienteEmail}
                 onChange={(event) => setClienteEmail(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, email: true }))}
+                aria-invalid={Boolean(tocado.email && errorEmail)}
               />
-              {tocado.email && <FieldError message={errorEmail} />}
-            </label>
+            </Field>
 
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Teléfono (opcional)
-              <input
+            <Field label="Teléfono (opcional)" error={tocado.telefono ? errorTelefono : undefined}>
+              <Input
                 type="tel"
                 maxLength={30}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 value={clienteTelefono}
                 onChange={(event) => setClienteTelefono(event.target.value)}
                 onBlur={() => setTocado((t) => ({ ...t, telefono: true }))}
+                aria-invalid={Boolean(tocado.telefono && errorTelefono)}
               />
-              {tocado.telefono && <FieldError message={errorTelefono} />}
-            </label>
+            </Field>
 
             {submitError && <ErrorBanner message={submitError} />}
 
-            <Button type="submit" disabled={!formularioValido || enviando}>
-              {enviando ? 'Confirmando…' : 'Reservar'}
+            <Button type="submit" disabled={!formularioValido} loading={enviando}>
+              Reservar
             </Button>
           </form>
-        </Card>
+        </div>
       )}
     </div>
   )

@@ -6,8 +6,10 @@ import { EstadoReserva } from '../../types/negocio'
 import { DIAS_SEMANA } from '../../types/horario'
 import type { NegocioDetalleAdmin } from '../../types/negocioAdmin'
 import { Card } from '../../components/Card'
+import { Button } from '../../components/Button'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
+import { ArrowLeftIcon } from '../../components/icons'
 
 function formatHora(horaHms: string): string {
   return horaHms.slice(0, 5)
@@ -72,8 +74,12 @@ export function NegocioDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link to="/admin/negocios" className="text-sm text-emerald-700 hover:underline">
-          ← Negocios
+        <Link
+          to="/admin/negocios"
+          className="inline-flex items-center gap-1 text-sm font-medium text-link-600 hover:text-link-700"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Negocios
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <h1 className="text-xl font-semibold text-slate-900">{negocio.nombre}</h1>
@@ -91,21 +97,16 @@ export function NegocioDetailPage() {
       </div>
 
       <div>
-        <button
-          type="button"
-          disabled={procesando}
-          onClick={handleCambiarEstado}
-          className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <Button variant="secondary" loading={procesando} onClick={handleCambiarEstado}>
           {negocio.activo ? 'Desactivar negocio' : 'Activar negocio'}
-        </button>
+        </Button>
       </div>
 
       {negocio.recursos.length === 0 ? (
         <p className="text-slate-500">Este negocio todavía no cargó recursos.</p>
       ) : (
         negocio.recursos.map((recurso) => (
-          <Card key={recurso.id} className="flex flex-col gap-4">
+          <Card key={recurso.id} hover className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-semibold text-slate-900">{recurso.nombre}</h2>
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
@@ -132,7 +133,7 @@ export function NegocioDetailPage() {
                   {recurso.horarios.map((horario) => (
                     <span
                       key={horario.id}
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600"
+                      className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600"
                     >
                       {nombreDia(horario.diaSemana)} {formatHora(horario.horaInicio)}-{formatHora(horario.horaFin)}
                     </span>
@@ -150,7 +151,7 @@ export function NegocioDetailPage() {
                   {recurso.reservas.map((reserva) => (
                     <div
                       key={reserva.id}
-                      className="flex flex-col gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-1 rounded-xl border border-slate-200 px-3 py-2 text-sm transition-colors duration-200 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex items-center gap-2">
                         <span
@@ -166,7 +167,7 @@ export function NegocioDetailPage() {
                         <span>
                           {reserva.clienteNombre} ({reserva.clienteEmail})
                         </span>
-                        <span className="font-medium text-emerald-700">
+                        <span className="font-semibold text-accent-600">
                           ${reserva.precioTotal.toLocaleString('es-AR')}
                         </span>
                       </div>

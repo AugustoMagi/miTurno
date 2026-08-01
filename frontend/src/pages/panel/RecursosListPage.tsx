@@ -7,7 +7,8 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input } from '../../components/Input'
+import { PlusIcon, XIcon } from '../../components/icons'
 import { validarEntero, validarNumeroNoNegativo, validarRequerido } from '../../utils/validation'
 
 export function RecursosListPage() {
@@ -77,72 +78,68 @@ export function RecursosListPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-slate-900">Recursos</h1>
-        <Button onClick={() => setMostrarForm((show) => !show)}>
+        <Button
+          variant={mostrarForm ? 'secondary' : 'primary'}
+          icon={mostrarForm ? <XIcon /> : <PlusIcon />}
+          onClick={() => setMostrarForm((show) => !show)}
+        >
           {mostrarForm ? 'Cancelar' : 'Nuevo recurso'}
         </Button>
       </div>
 
       {mostrarForm && (
-        <Card>
+        <Card className="animate-scale-in">
           <form className="flex flex-col gap-4" onSubmit={handleCrear}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                Nombre
-                <input
+              <Field label="Nombre" error={tocado.nombre ? errorNombre : undefined} required>
+                <Input
                   type="text"
                   required
                   maxLength={150}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={nombre}
                   onChange={(event) => setNombre(event.target.value)}
                   onBlur={() => setTocado((t) => ({ ...t, nombre: true }))}
+                  aria-invalid={Boolean(tocado.nombre && errorNombre)}
                 />
-                {tocado.nombre && <FieldError message={errorNombre} />}
-              </label>
-              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                Tipo
-                <input
+              </Field>
+              <Field label="Tipo" error={tocado.tipo ? errorTipo : undefined} required>
+                <Input
                   type="text"
                   required
                   placeholder="Futbol 5, Padel, ..."
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={tipo}
                   onChange={(event) => setTipo(event.target.value)}
                   onBlur={() => setTocado((t) => ({ ...t, tipo: true }))}
+                  aria-invalid={Boolean(tocado.tipo && errorTipo)}
                 />
-                {tocado.tipo && <FieldError message={errorTipo} />}
-              </label>
-              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                Duración del turno (min)
-                <input
+              </Field>
+              <Field label="Duración del turno (min)" error={tocado.duracion ? errorDuracion : undefined} required>
+                <Input
                   type="number"
                   required
                   min={1}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={duracionTurnoMinutos}
                   onChange={(event) => setDuracionTurnoMinutos(Number(event.target.value))}
                   onBlur={() => setTocado((t) => ({ ...t, duracion: true }))}
+                  aria-invalid={Boolean(tocado.duracion && errorDuracion)}
                 />
-                {tocado.duracion && <FieldError message={errorDuracion} />}
-              </label>
-              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                Precio
-                <input
+              </Field>
+              <Field label="Precio" error={tocado.precio ? errorPrecio : undefined} required>
+                <Input
                   type="number"
                   required
                   min={0}
                   step="0.01"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   value={precio}
                   onChange={(event) => setPrecio(Number(event.target.value))}
                   onBlur={() => setTocado((t) => ({ ...t, precio: true }))}
+                  aria-invalid={Boolean(tocado.precio && errorPrecio)}
                 />
-                {tocado.precio && <FieldError message={errorPrecio} />}
-              </label>
+              </Field>
             </div>
             {formError && <ErrorBanner message={formError} />}
-            <Button type="submit" disabled={creando} className="self-start">
-              {creando ? 'Creando…' : 'Crear recurso'}
+            <Button type="submit" loading={creando} className="self-start">
+              Crear recurso
             </Button>
           </form>
         </Card>
@@ -157,25 +154,28 @@ export function RecursosListPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {recursos.map((recurso) => (
-            <Card key={recurso.id} className="flex flex-col gap-3">
+            <Card key={recurso.id} hover className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <Link to={`/panel/recursos/${recurso.id}`} className="font-semibold text-slate-900 hover:underline">
+                  <Link
+                    to={`/panel/recursos/${recurso.id}`}
+                    className="font-semibold text-slate-900 hover:text-link-700"
+                  >
                     {recurso.nombre}
                   </Link>
                   <p className="text-sm text-slate-500">{recurso.tipo}</p>
                 </div>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
                     recurso.activo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
                   }`}
                 >
                   {recurso.activo ? 'Activo' : 'Inactivo'}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
                 <span className="text-slate-500">{recurso.duracionTurnoMinutos} min</span>
-                <span className="font-semibold text-emerald-700">
+                <span className="font-semibold text-accent-600">
                   ${recurso.precio.toLocaleString('es-AR')}
                 </span>
               </div>
@@ -187,7 +187,7 @@ export function RecursosListPage() {
                 </Link>
                 <Button
                   variant="secondary"
-                  disabled={cambiandoEstado === recurso.id}
+                  loading={cambiandoEstado === recurso.id}
                   onClick={() => handleCambiarEstado(recurso)}
                 >
                   {recurso.activo ? 'Desactivar' : 'Activar'}

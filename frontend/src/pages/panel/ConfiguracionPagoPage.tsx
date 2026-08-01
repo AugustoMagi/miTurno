@@ -14,7 +14,8 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { FieldError } from '../../components/FieldError'
+import { Field, Input } from '../../components/Input'
+import { CheckIcon, CreditCardIcon } from '../../components/icons'
 import { validarAlias } from '../../utils/validation'
 
 export function ConfiguracionPagoPage() {
@@ -121,7 +122,8 @@ export function ConfiguracionPagoPage() {
       <h1 className="text-xl font-semibold text-slate-900">Cobro</h1>
 
       {mensajeOAuth && mensajeOAuth.tipo === 'ok' && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <CheckIcon className="h-4 w-4 shrink-0" />
           {mensajeOAuth.texto}
         </div>
       )}
@@ -154,27 +156,32 @@ export function ConfiguracionPagoPage() {
               desde Reservas.
             </p>
           )}
-          <Button variant="secondary" disabled={desconectando} onClick={handleDesconectar} className="self-start">
-            {desconectando ? 'Desconectando…' : 'Desconectar'}
+          <Button variant="secondary" loading={desconectando} onClick={handleDesconectar} className="self-start">
+            Desconectar
           </Button>
         </Card>
       )}
 
       <Card className="flex flex-col gap-4">
-        <div>
-          <h2 className="font-semibold text-slate-900">Conectar con Mercado Pago</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Iniciá sesión en tu cuenta de Mercado Pago y autorizá a MiTurno. No necesitás copiar ni pegar
-            ningún token: activa el cobro automático de tus reservas.
-          </p>
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-accent-600">
+            <CreditCardIcon className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="font-semibold text-slate-900">Conectar con Mercado Pago</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Iniciá sesión en tu cuenta de Mercado Pago y autorizá a MiTurno. No necesitás copiar ni pegar
+              ningún token: activa el cobro automático de tus reservas.
+            </p>
+          </div>
         </div>
         <Button
           type="button"
-          disabled={conectandoConMercadoPago}
+          loading={conectandoConMercadoPago}
           onClick={handleConectarMercadoPago}
           className="self-start"
         >
-          {conectandoConMercadoPago ? 'Redirigiendo…' : 'Conectar con Mercado Pago'}
+          Conectar con Mercado Pago
         </Button>
       </Card>
 
@@ -187,22 +194,20 @@ export function ConfiguracionPagoPage() {
               confirmes el pago a mano desde Reservas.
             </p>
           </div>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-            Alias o CVU de Mercado Pago
-            <input
+          <Field label="Alias o CVU de Mercado Pago" error={aliasTocado ? errorAlias : undefined} required>
+            <Input
               type="text"
               required
               maxLength={200}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               value={alias}
               onChange={(event) => setAlias(event.target.value)}
               onBlur={() => setAliasTocado(true)}
+              aria-invalid={Boolean(aliasTocado && errorAlias)}
             />
-            {aliasTocado && <FieldError message={errorAlias} />}
-          </label>
+          </Field>
           {formError && <ErrorBanner message={formError} />}
-          <Button type="submit" disabled={guardando} variant="secondary" className="self-start">
-            {guardando ? 'Guardando…' : 'Guardar alias'}
+          <Button type="submit" loading={guardando} variant="secondary" className="self-start">
+            Guardar alias
           </Button>
         </form>
       </Card>
