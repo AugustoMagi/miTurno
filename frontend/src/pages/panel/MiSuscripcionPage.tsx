@@ -54,7 +54,15 @@ function TextoVencimiento({ suscripcion }: { suscripcion: MiSuscripcion }) {
   )
 }
 
-function TextoCobroAutomatico({ suscripcion }: { suscripcion: MiSuscripcion }) {
+function TextoCobroAutomatico({
+  suscripcion,
+  reactivando,
+  onReactivar,
+}: {
+  suscripcion: MiSuscripcion
+  reactivando: boolean
+  onReactivar: () => void
+}) {
   const fecha = suscripcion.fechaProximoVencimiento.slice(0, 10)
 
   if (suscripcion.cobroAutomaticoActivo) {
@@ -66,10 +74,15 @@ function TextoCobroAutomatico({ suscripcion }: { suscripcion: MiSuscripcion }) {
     )
   }
   return (
-    <p className="flex items-center gap-1.5 text-sm font-medium text-slate-500">
-      <XIcon className="h-4 w-4" />
-      Cobro automático desactivado: no se te va a volver a cobrar.
-    </p>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="flex items-center gap-1.5 text-sm font-medium text-slate-500">
+        <XIcon className="h-4 w-4" />
+        Cobro automático desactivado: no se te va a volver a cobrar.
+      </p>
+      <Button variant="secondary" size="sm" loading={reactivando} onClick={onReactivar}>
+        Reactivar cobro automático
+      </Button>
+    </div>
   )
 }
 
@@ -136,6 +149,7 @@ export function MiSuscripcionPage() {
 
   const [procesandoPlanId, setProcesandoPlanId] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState(false)
+  const [reactivando, setReactivando] = useState(false)
 
   function cargarSuscripcion() {
     return obtenerMiSuscripcion()
@@ -230,6 +244,21 @@ export function MiSuscripcionPage() {
     }
   }
 
+  // Reactiva el cobro automático de Mercado Pago para el plan ya asignado, sin pasar por
+  // elegir/cambiar plan: es lo mismo que "Suscribirme con Mercado Pago" en la card del plan actual,
+  // pero accesible directo desde acá para quien canceló y se arrepintió antes de que venza el acceso.
+  async function handleReactivarCobroAutomatico() {
+    setReactivando(true)
+    setError(null)
+    try {
+      const initPoint = await iniciarSuscripcionMercadoPago()
+      window.location.href = initPoint
+    } catch (err) {
+      setError(extractError(err))
+      setReactivando(false)
+    }
+  }
+
   async function handleCancelar() {
     const fecha = suscripcion?.fechaProximoVencimiento.slice(0, 10)
     if (
@@ -282,7 +311,13 @@ export function MiSuscripcionPage() {
             </span>
           </div>
           <TextoVencimiento suscripcion={suscripcion} />
-          {suscripcion.planPrecio > 0 && <TextoCobroAutomatico suscripcion={suscripcion} />}
+          {suscripcion.planPrecio > 0 && (
+            <TextoCobroAutomatico
+              suscripcion={suscripcion}
+              reactivando={reactivando}
+              onReactivar={handleReactivarCobroAutomatico}
+            />
+          )}
         </Card>
       )}
 
