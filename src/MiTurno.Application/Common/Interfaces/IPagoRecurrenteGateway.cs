@@ -19,6 +19,17 @@ public interface IPagoRecurrenteGateway
     Task<Result> CancelarPreapprovalAsync(
         string accessToken, string preapprovalId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Pausa la Preapproval (no cobra) sin cancelarla: a diferencia de CancelarPreapprovalAsync, se
+    /// puede reanudar después con ReanudarPreapprovalAsync sin que el pagador vuelva a autorizar.
+    /// </summary>
+    Task<Result> PausarPreapprovalAsync(
+        string accessToken, string preapprovalId, CancellationToken cancellationToken = default);
+
+    /// <summary>Reanuda una Preapproval pausada — misma autorización, no requiere nuevo checkout.</summary>
+    Task<Result> ReanudarPreapprovalAsync(
+        string accessToken, string preapprovalId, CancellationToken cancellationToken = default);
+
     Task<Result> ActualizarMontoPreapprovalAsync(
         string accessToken, string preapprovalId, decimal nuevoMonto, CancellationToken cancellationToken = default);
 

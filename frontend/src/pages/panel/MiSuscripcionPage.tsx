@@ -7,6 +7,7 @@ import {
   elegirPlan,
   iniciarSuscripcionMercadoPago,
   obtenerMiSuscripcion,
+  reanudarCobroAutomatico,
 } from '../../api/miSuscripcion'
 import { listarPlanesPublicos } from '../../api/planesPublicos'
 import { extractError } from '../../api/client'
@@ -56,11 +57,15 @@ function TextoVencimiento({ suscripcion }: { suscripcion: MiSuscripcion }) {
 
 function TextoCobroAutomatico({
   suscripcion,
+  reanudando,
   reactivando,
+  onReanudar,
   onReactivar,
 }: {
   suscripcion: MiSuscripcion
+  reanudando: boolean
   reactivando: boolean
+  onReanudar: () => void
   onReactivar: () => void
 }) {
   const fecha = suscripcion.fechaProximoVencimiento.slice(0, 10)
@@ -73,6 +78,25 @@ function TextoCobroAutomatico({
       </p>
     )
   }
+
+  // Pausado: la Preapproval de Mercado Pago sigue autorizada, así que reanudar es instantáneo (un
+  // PUT nuestro), sin volver a pasar por el checkout de MP.
+  if (suscripcion.cobroAutomaticoPausado) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-slate-500">
+          <XIcon className="h-4 w-4" />
+          Cobro automático pausado: no se te va a cobrar hasta que lo reactives.
+        </p>
+        <Button variant="secondary" size="sm" loading={reanudando} onClick={onReanudar}>
+          Reactivar cobro automático
+        </Button>
+      </div>
+    )
+  }
+
+  // Nunca se activó (o quedó cancelado del todo en Mercado Pago): no hay nada que reanudar, hay que
+  // autorizar una Preapproval nueva desde el checkout de MP.
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="flex items-center gap-1.5 text-sm font-medium text-slate-500">
@@ -80,7 +104,7 @@ function TextoCobroAutomatico({
         Cobro automático desactivado: no se te va a volver a cobrar.
       </p>
       <Button variant="secondary" size="sm" loading={reactivando} onClick={onReactivar}>
-        Reactivar cobro automático
+        Activar cobro automático
       </Button>
     </div>
   )
@@ -90,12 +114,14 @@ function PlanCard({
   plan,
   esElActual,
   cobroAutomaticoActivo,
+  cobroAutomaticoPausado,
   procesando,
   onSeleccionar,
 }: {
   plan: PlanPublico
   esElActual: boolean
   cobroAutomaticoActivo: boolean
+  cobroAutomaticoPausado: boolean
   procesando: boolean
   onSeleccionar: () => void
 }) {
@@ -129,6 +155,8 @@ function PlanCard({
           <CheckIcon className="h-4 w-4" />
           Cobro automático activo
         </p>
+      ) : esElActual && cobroAutomaticoPausado ? (
+        <p className="text-sm text-slate-500">Cobro automático pausado — reactivalo arriba.</p>
       ) : (
         <Button loading={procesando} onClick={onSeleccionar} className="mt-auto">
           {esElActual ? 'Suscribirme con Mercado Pago' : 'Cambiar a este plan'}
@@ -150,6 +178,7 @@ export function MiSuscripcionPage() {
   const [procesandoPlanId, setProcesandoPlanId] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState(false)
   const [reactivando, setReactivando] = useState(false)
+  const [reanudando, setReanudando] = useState(false)
 
   function cargarSuscripcion() {
     return obtenerMiSuscripcion()
@@ -219,21 +248,24 @@ export function MiSuscripcionPage() {
 
   // Elige/cambia el plan (según si ya había una suscripción asignada) y, si el plan tiene costo y
   // todavía no hay cobro automático activo para él, manda directo a pagarlo con Mercado Pago: un
-  // solo click cubre "elegir/cambiar" y "pagar", en vez de dos pasos separados.
+  // solo click cubre "elegir/cambiar" y "pagar", en vez de dos pasos separados. Si es un cambio de
+  // plan (no el mismo de siempre), se cobra ya mismo en vez de esperar al vencimiento del período
+  // viejo: el negocio decidió pagar el nuevo precio ahora.
   async function handleSeleccionarPlan(plan: PlanPublico) {
+    const esCambioDePlan = suscripcion !== null && suscripcion.planId !== plan.id
     setProcesandoPlanId(plan.id)
     setError(null)
     try {
       let actual: MiSuscripcion | null = suscripcion ?? null
       if (actual === null) {
         actual = await elegirPlan(plan.id)
-      } else if (actual.planId !== plan.id) {
+      } else if (esCambioDePlan) {
         actual = await cambiarPlanMiSuscripcion(plan.id)
       }
       setSuscripcion(actual)
 
       if (plan.precio > 0 && !actual.cobroAutomaticoActivo) {
-        const initPoint = await iniciarSuscripcionMercadoPago()
+        const initPoint = await iniciarSuscripcionMercadoPago(esCambioDePlan)
         window.location.href = initPoint
         return
       }
@@ -244,9 +276,23 @@ export function MiSuscripcionPage() {
     }
   }
 
-  // Reactiva el cobro automático de Mercado Pago para el plan ya asignado, sin pasar por
-  // elegir/cambiar plan: es lo mismo que "Suscribirme con Mercado Pago" en la card del plan actual,
-  // pero accesible directo desde acá para quien canceló y se arrepintió antes de que venza el acceso.
+  // Reanuda un cobro automático pausado: reusa la Preapproval ya autorizada en Mercado Pago, así que
+  // no hace falta mandar al negocio de nuevo al checkout de MP.
+  async function handleReanudarCobroAutomatico() {
+    setReanudando(true)
+    setError(null)
+    try {
+      await reanudarCobroAutomatico()
+      cargar()
+    } catch (err) {
+      setError(extractError(err))
+    } finally {
+      setReanudando(false)
+    }
+  }
+
+  // Sólo para cuando NO hay una Preapproval pausada para reanudar (nunca se activó, o quedó
+  // cancelada del todo en Mercado Pago): acá sí hace falta autorizar una nueva desde el checkout.
   async function handleReactivarCobroAutomatico() {
     setReactivando(true)
     setError(null)
@@ -314,7 +360,9 @@ export function MiSuscripcionPage() {
           {suscripcion.planPrecio > 0 && (
             <TextoCobroAutomatico
               suscripcion={suscripcion}
+              reanudando={reanudando}
               reactivando={reactivando}
+              onReanudar={handleReanudarCobroAutomatico}
               onReactivar={handleReactivarCobroAutomatico}
             />
           )}
@@ -336,6 +384,9 @@ export function MiSuscripcionPage() {
                 esElActual={suscripcion !== null && suscripcion.planId === plan.id}
                 cobroAutomaticoActivo={
                   suscripcion !== null && suscripcion.planId === plan.id && suscripcion.cobroAutomaticoActivo
+                }
+                cobroAutomaticoPausado={
+                  suscripcion !== null && suscripcion.planId === plan.id && suscripcion.cobroAutomaticoPausado
                 }
                 procesando={procesandoPlanId === plan.id}
                 onSeleccionar={() => handleSeleccionarPlan(plan)}

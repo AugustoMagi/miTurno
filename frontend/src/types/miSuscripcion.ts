@@ -11,4 +11,5 @@ export interface MiSuscripcion {
   fechaProximoVencimiento: string
   estaActiva: boolean
   cobroAutomaticoActivo: boolean
+  cobroAutomaticoPausado: boolean
 }

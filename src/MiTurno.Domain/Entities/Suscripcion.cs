@@ -21,6 +21,13 @@ public class Suscripcion : BaseEntity
     /// </summary>
     public string? MercadoPagoPreapprovalId { get; private set; }
 
+    /// <summary>
+    /// Si hay Preapproval asignada pero está pausada del lado de Mercado Pago: no cobra, pero a
+    /// diferencia de cancelarla del todo, se puede reanudar con un solo PUT (sin que el negocio
+    /// tenga que volver a autorizar el pago desde el checkout de Mercado Pago).
+    /// </summary>
+    public bool CobroAutomaticoPausado { get; private set; }
+
     private readonly List<PagoSuscripcion> _pagos = [];
     public IReadOnlyCollection<PagoSuscripcion> Pagos => _pagos.AsReadOnly();
 
@@ -106,6 +113,35 @@ public class Suscripcion : BaseEntity
     public void QuitarPreapproval()
     {
         MercadoPagoPreapprovalId = null;
+        CobroAutomaticoPausado = false;
+        MarcarActualizado();
+    }
+
+    /// <summary>
+    /// Pausa el cobro automático sin perder la autorización: a diferencia de cancelar la Preapproval
+    /// del todo, se puede reanudar después sin que el negocio pase de nuevo por el checkout de
+    /// Mercado Pago.
+    /// </summary>
+    public void PausarCobroAutomatico()
+    {
+        if (MercadoPagoPreapprovalId is null)
+            throw new DomainException("No hay cobro automático para pausar.");
+
+        CobroAutomaticoPausado = true;
+        MarcarActualizado();
+    }
+
+    /// <summary>
+    /// Reanuda un cobro automático pausado: usa la misma Preapproval ya autorizada, así que no hace
+    /// falta que el negocio vuelva a pasar por Mercado Pago.
+    /// </summary>
+    public void ReanudarCobroAutomatico()
+    {
+        if (MercadoPagoPreapprovalId is null)
+            throw new DomainException("No hay cobro automático para reanudar.");
+
+        CobroAutomaticoPausado = false;
+        Estado = EstadoSuscripcion.Activa;
         MarcarActualizado();
     }
 

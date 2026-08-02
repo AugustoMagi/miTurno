@@ -11,8 +11,10 @@ export async function elegirPlan(planId: string): Promise<MiSuscripcion> {
   return data
 }
 
-export async function iniciarSuscripcionMercadoPago(): Promise<string> {
-  const { data } = await apiClient.post<{ initPoint: string }>('/api/suscripcion/suscribirme')
+export async function iniciarSuscripcionMercadoPago(cobrarInmediato = false): Promise<string> {
+  const { data } = await apiClient.post<{ initPoint: string }>('/api/suscripcion/suscribirme', null, {
+    params: { cobrarInmediato },
+  })
   return data.initPoint
 }
 
@@ -23,4 +25,8 @@ export async function cambiarPlanMiSuscripcion(nuevoPlanId: string): Promise<MiS
 
 export async function cancelarMiSuscripcion(): Promise<void> {
   await apiClient.patch('/api/suscripcion/cancelar')
+}
+
+export async function reanudarCobroAutomatico(): Promise<void> {
+  await apiClient.patch('/api/suscripcion/reanudar-cobro-automatico')
 }

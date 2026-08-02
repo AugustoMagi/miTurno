@@ -4,14 +4,15 @@ using MiTurno.Application.Common.Models;
 namespace MiTurno.Application.Features.Suscripciones;
 
 /// <summary>
-/// Si la suscripción tiene el cobro automático de Mercado Pago activado, primero cancela la
-/// Preapproval del lado de Mercado Pago: si eso falla, no cancela localmente (para no dejar al
-/// negocio con el acceso cortado mientras Mercado Pago le sigue cobrando igual). Si la Preapproval
-/// ya está cancelada en Mercado Pago (ej. nunca se llegó a autorizar, o el negocio la canceló desde
-/// su propia cuenta), no hay nada que cobre: se salta el intento de cancelarla ahí, porque Mercado
-/// Pago rechaza cancelar una Preapproval que ya está cancelada y eso bloquearía la baja local sin motivo.
-/// Cancelar acá sólo apaga la renovación automática: <see cref="Domain.Entities.Suscripcion.EstaActiva"/>
-/// sigue dando acceso hasta la fecha de vencimiento ya paga, no lo corta al toque.
+/// Si la suscripción tiene el cobro automático de Mercado Pago activado, lo pausa (no lo cancela
+/// del todo): así, si el negocio se arrepiente, <see cref="ReanudarCobroAutomaticoUseCase"/> puede
+/// reactivarlo con la misma Preapproval, sin que tenga que volver a autorizar desde el checkout de
+/// Mercado Pago. Si pausar falla, no cancela localmente (para no dejar al negocio con el acceso
+/// cortado mientras Mercado Pago le sigue cobrando igual). Si la Preapproval ya está cancelada del
+/// todo en Mercado Pago (ej. el negocio la canceló desde su propia cuenta), no hay nada para pausar
+/// ni para reanudar después: se suelta directamente. Cancelar acá sólo apaga la renovación
+/// automática: <see cref="Domain.Entities.Suscripcion.EstaActiva"/> sigue dando acceso hasta la
+/// fecha de vencimiento ya paga, no lo corta al toque.
 /// </summary>
 public class CancelarMiSuscripcionUseCase
 {
@@ -42,17 +43,24 @@ public class CancelarMiSuscripcionUseCase
         {
             var estadoResult = await _pagoRecurrenteGateway.ObtenerPreapprovalAsync(
                 _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
-            var yaCanceladaEnMercadoPago = estadoResult.IsSuccess && estadoResult.Value.Status == "cancelled";
 
-            if (!yaCanceladaEnMercadoPago)
+            if (estadoResult.IsSuccess && estadoResult.Value.Status == "cancelled")
             {
-                var cancelacionResult = await _pagoRecurrenteGateway.CancelarPreapprovalAsync(
-                    _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
-                if (cancelacionResult.IsFailure)
-                    return Result.Failure(cancelacionResult.Error!);
+                suscripcion.QuitarPreapproval();
             }
+            else
+            {
+                var yaPausadaEnMercadoPago = estadoResult.IsSuccess && estadoResult.Value.Status == "paused";
+                if (!yaPausadaEnMercadoPago)
+                {
+                    var pausaResult = await _pagoRecurrenteGateway.PausarPreapprovalAsync(
+                        _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
+                    if (pausaResult.IsFailure)
+                        return Result.Failure(pausaResult.Error!);
+                }
 
-            suscripcion.QuitarPreapproval();
+                suscripcion.PausarCobroAutomatico();
+            }
         }
 
         suscripcion.Cancelar();

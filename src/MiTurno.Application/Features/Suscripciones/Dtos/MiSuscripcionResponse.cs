@@ -11,4 +11,5 @@ public record MiSuscripcionResponse(
     EstadoSuscripcion Estado,
     DateTime FechaProximoVencimiento,
     bool EstaActiva,
-    bool CobroAutomaticoActivo);
+    bool CobroAutomaticoActivo,
+    bool CobroAutomaticoPausado);

@@ -49,7 +49,7 @@ public class CancelarMiSuscripcionUseCaseTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConCobroAutomaticoActivo_CancelaLaPreapprovalYLaSuscripcion()
+    public async Task ExecuteAsync_ConCobroAutomaticoActivo_PausaLaPreapprovalYCancelaLaSuscripcion()
     {
         var negocioId = Guid.NewGuid();
         var plan = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
@@ -59,18 +59,20 @@ public class CancelarMiSuscripcionUseCaseTests
         _plataformaPagoConfiguracion.AccessToken.Returns("PLATAFORMA-TOKEN");
         _pagoRecurrenteGateway.ObtenerPreapprovalAsync("PLATAFORMA-TOKEN", "preapproval-1")
             .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-1", "authorized", null)));
-        _pagoRecurrenteGateway.CancelarPreapprovalAsync("PLATAFORMA-TOKEN", "preapproval-1")
+        _pagoRecurrenteGateway.PausarPreapprovalAsync("PLATAFORMA-TOKEN", "preapproval-1")
             .Returns(Result.Success());
 
         var result = await _useCase.ExecuteAsync(negocioId);
 
         result.IsSuccess.Should().BeTrue();
         suscripcion.Estado.Should().Be(EstadoSuscripcion.Cancelada);
-        suscripcion.MercadoPagoPreapprovalId.Should().BeNull();
+        // No se suelta el id: hay que poder reanudar sin volver a pasar por el checkout de MP.
+        suscripcion.MercadoPagoPreapprovalId.Should().Be("preapproval-1");
+        suscripcion.CobroAutomaticoPausado.Should().BeTrue();
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConCobroAutomaticoYFallaAlCancelarEnMercadoPago_NoCancelaLocalmente()
+    public async Task ExecuteAsync_ConCobroAutomaticoYFallaAlPausarEnMercadoPago_NoCancelaLocalmente()
     {
         var negocioId = Guid.NewGuid();
         var plan = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
@@ -79,7 +81,7 @@ public class CancelarMiSuscripcionUseCaseTests
         _suscripcionRepository.GetByNegocioIdAsync(negocioId).Returns(suscripcion);
         _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-1")
             .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-1", "authorized", null)));
-        _pagoRecurrenteGateway.CancelarPreapprovalAsync(Arg.Any<string>(), "preapproval-1")
+        _pagoRecurrenteGateway.PausarPreapprovalAsync(Arg.Any<string>(), "preapproval-1")
             .Returns(Result.Failure("Mercado Pago no respondió."));
 
         var result = await _useCase.ExecuteAsync(negocioId);
@@ -87,11 +89,32 @@ public class CancelarMiSuscripcionUseCaseTests
         result.IsFailure.Should().BeTrue();
         suscripcion.Estado.Should().NotBe(EstadoSuscripcion.Cancelada);
         suscripcion.MercadoPagoPreapprovalId.Should().Be("preapproval-1");
+        suscripcion.CobroAutomaticoPausado.Should().BeFalse();
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConPreapprovalYaCanceladaEnMercadoPago_CancelaLocalmenteSinReintentarEnMercadoPago()
+    public async Task ExecuteAsync_ConPreapprovalYaPausadaEnMercadoPago_CancelaLocalmenteSinReintentarPausar()
+    {
+        var negocioId = Guid.NewGuid();
+        var plan = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
+        var suscripcion = Suscripcion.IniciarPrueba(negocioId, plan);
+        suscripcion.AsignarPreapproval("preapproval-1");
+        _suscripcionRepository.GetByNegocioIdAsync(negocioId).Returns(suscripcion);
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-1")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-1", "paused", null)));
+
+        var result = await _useCase.ExecuteAsync(negocioId);
+
+        result.IsSuccess.Should().BeTrue();
+        suscripcion.Estado.Should().Be(EstadoSuscripcion.Cancelada);
+        suscripcion.CobroAutomaticoPausado.Should().BeTrue();
+        await _pagoRecurrenteGateway.DidNotReceive().PausarPreapprovalAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConPreapprovalYaCanceladaEnMercadoPago_LaSueltaSinPausar()
     {
         var negocioId = Guid.NewGuid();
         var plan = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
@@ -106,7 +129,8 @@ public class CancelarMiSuscripcionUseCaseTests
         result.IsSuccess.Should().BeTrue();
         suscripcion.Estado.Should().Be(EstadoSuscripcion.Cancelada);
         suscripcion.MercadoPagoPreapprovalId.Should().BeNull();
-        await _pagoRecurrenteGateway.DidNotReceive().CancelarPreapprovalAsync(
+        suscripcion.CobroAutomaticoPausado.Should().BeFalse();
+        await _pagoRecurrenteGateway.DidNotReceive().PausarPreapprovalAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

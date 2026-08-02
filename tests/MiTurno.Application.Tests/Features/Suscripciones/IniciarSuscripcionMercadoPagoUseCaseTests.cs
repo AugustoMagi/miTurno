@@ -64,6 +64,26 @@ public class IniciarSuscripcionMercadoPagoUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ConCobrarInmediato_IgnoraElVencimientoVigenteYCobraYa()
+    {
+        // Cuando se acaba de cambiar de plan, el negocio decidió pagar el nuevo precio ya mismo, no
+        // esperar a que termine el período del plan viejo.
+        var (negocio, suscripcion) = EscenarioValido();
+        _pagoRecurrenteGateway.CrearPreapprovalAsync(Arg.Any<CrearPreapprovalRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new PreapprovalCreadoResult("preapproval-1", "https://mp.test/suscribirme/preapproval-1")));
+
+        var antesDeEjecutar = DateTime.UtcNow;
+        var result = await _useCase.ExecuteAsync(negocio.Id, WebhookBaseUrl, cobrarInmediato: true);
+
+        result.IsSuccess.Should().BeTrue();
+        await _pagoRecurrenteGateway.Received(1).CrearPreapprovalAsync(
+            Arg.Is<CrearPreapprovalRequest>(r =>
+                r!.FechaInicio != suscripcion.FechaProximoVencimiento &&
+                r.FechaInicio >= antesDeEjecutar),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ExecuteAsync_SinSuscripcionAsignada_DevuelveFailure()
     {
         var negocioId = Guid.NewGuid();

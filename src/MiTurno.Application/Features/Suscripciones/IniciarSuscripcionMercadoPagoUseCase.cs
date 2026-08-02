@@ -36,8 +36,15 @@ public class IniciarSuscripcionMercadoPagoUseCase
         _unitOfWork = unitOfWork;
     }
 
+    /// <param name="cobrarInmediato">
+    /// True cuando se activa el cobro automático justo después de cambiar de plan: ahí se cobra
+    /// desde ya (el negocio decidió pagar más/menos ya mismo, no seguir esperando el período viejo).
+    /// False (default) para reactivarlo sobre el mismo plan de siempre (ej. desde la prueba gratis, o
+    /// tras una Preapproval cancelada del todo): ahí se respeta el período ya vigente y no se cobra
+    /// hasta que termine.
+    /// </param>
     public async Task<Result<IniciarSuscripcionMercadoPagoResponse>> ExecuteAsync(
-        Guid negocioId, string webhookBaseUrl, CancellationToken cancellationToken = default)
+        Guid negocioId, string webhookBaseUrl, bool cobrarInmediato = false, CancellationToken cancellationToken = default)
     {
         var suscripcion = await _suscripcionRepository.GetByNegocioIdAsync(negocioId, cancellationToken);
         if (suscripcion is null)
@@ -67,11 +74,14 @@ public class IniciarSuscripcionMercadoPagoUseCase
         var notificationUrl = $"{webhookBaseUrl}/api/public/suscripciones/{suscripcion.Id}/webhook/recurrente";
         var backUrl = $"{_frontendConfiguracion.BaseUrl}/panel/suscripcion?mp=vuelta";
 
-        // El primer cobro no debe salir el día que se autoriza la Preapproval: si ya hay un período
-        // vigente (de prueba, o pago pero con el cobro automático apagado), Mercado Pago no debe
-        // cobrar hasta que ese período termine. Sólo si ya venció se cobra de inmediato.
+        // El primer cobro no debe salir el día que se autoriza la Preapproval si se está retomando el
+        // mismo plan de siempre (de prueba, o pago pero con el cobro automático apagado): ahí se
+        // respeta el período ya vigente. Si en cambio se acaba de cambiar de plan, el negocio decidió
+        // pagar el nuevo precio ya mismo, así que se cobra de entrada (cobrarInmediato).
         var ahora = DateTime.UtcNow;
-        var fechaInicio = suscripcion.FechaProximoVencimiento > ahora ? suscripcion.FechaProximoVencimiento : ahora;
+        var fechaInicio = !cobrarInmediato && suscripcion.FechaProximoVencimiento > ahora
+            ? suscripcion.FechaProximoVencimiento
+            : ahora;
 
         var preapprovalResult = await _pagoRecurrenteGateway.CrearPreapprovalAsync(
             new CrearPreapprovalRequest(

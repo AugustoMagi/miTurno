@@ -16,19 +16,22 @@ public class SuscripcionController : ControllerBase
     private readonly IniciarSuscripcionMercadoPagoUseCase _iniciarSuscripcionMercadoPagoUseCase;
     private readonly CambiarPlanMiSuscripcionUseCase _cambiarPlanMiSuscripcionUseCase;
     private readonly CancelarMiSuscripcionUseCase _cancelarMiSuscripcionUseCase;
+    private readonly ReanudarCobroAutomaticoUseCase _reanudarCobroAutomaticoUseCase;
 
     public SuscripcionController(
         ObtenerMiSuscripcionUseCase obtenerMiSuscripcionUseCase,
         ElegirPlanUseCase elegirPlanUseCase,
         IniciarSuscripcionMercadoPagoUseCase iniciarSuscripcionMercadoPagoUseCase,
         CambiarPlanMiSuscripcionUseCase cambiarPlanMiSuscripcionUseCase,
-        CancelarMiSuscripcionUseCase cancelarMiSuscripcionUseCase)
+        CancelarMiSuscripcionUseCase cancelarMiSuscripcionUseCase,
+        ReanudarCobroAutomaticoUseCase reanudarCobroAutomaticoUseCase)
     {
         _obtenerMiSuscripcionUseCase = obtenerMiSuscripcionUseCase;
         _elegirPlanUseCase = elegirPlanUseCase;
         _iniciarSuscripcionMercadoPagoUseCase = iniciarSuscripcionMercadoPagoUseCase;
         _cambiarPlanMiSuscripcionUseCase = cambiarPlanMiSuscripcionUseCase;
         _cancelarMiSuscripcionUseCase = cancelarMiSuscripcionUseCase;
+        _reanudarCobroAutomaticoUseCase = reanudarCobroAutomaticoUseCase;
     }
 
     [HttpGet]
@@ -46,10 +49,11 @@ public class SuscripcionController : ControllerBase
     }
 
     [HttpPost("suscribirme")]
-    public async Task<IActionResult> Suscribirme(CancellationToken cancellationToken)
+    public async Task<IActionResult> Suscribirme([FromQuery] bool cobrarInmediato, CancellationToken cancellationToken)
     {
         var webhookBaseUrl = $"{Request.Scheme}://{Request.Host}";
-        var result = await _iniciarSuscripcionMercadoPagoUseCase.ExecuteAsync(User.GetNegocioId(), webhookBaseUrl, cancellationToken);
+        var result = await _iniciarSuscripcionMercadoPagoUseCase.ExecuteAsync(
+            User.GetNegocioId(), webhookBaseUrl, cobrarInmediato, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
     }
 
@@ -64,6 +68,13 @@ public class SuscripcionController : ControllerBase
     public async Task<IActionResult> Cancelar(CancellationToken cancellationToken)
     {
         var result = await _cancelarMiSuscripcionUseCase.ExecuteAsync(User.GetNegocioId(), cancellationToken);
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error });
+    }
+
+    [HttpPatch("reanudar-cobro-automatico")]
+    public async Task<IActionResult> ReanudarCobroAutomatico(CancellationToken cancellationToken)
+    {
+        var result = await _reanudarCobroAutomaticoUseCase.ExecuteAsync(User.GetNegocioId(), cancellationToken);
         return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error });
     }
 }

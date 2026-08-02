@@ -93,18 +93,30 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         }
     }
 
-    public async Task<Result> CancelarPreapprovalAsync(
-        string accessToken, string preapprovalId, CancellationToken cancellationToken = default)
+    public Task<Result> CancelarPreapprovalAsync(
+        string accessToken, string preapprovalId, CancellationToken cancellationToken = default) =>
+        ActualizarStatusAsync(accessToken, preapprovalId, "cancelled", "cancelar", cancellationToken);
+
+    public Task<Result> PausarPreapprovalAsync(
+        string accessToken, string preapprovalId, CancellationToken cancellationToken = default) =>
+        ActualizarStatusAsync(accessToken, preapprovalId, "paused", "pausar", cancellationToken);
+
+    public Task<Result> ReanudarPreapprovalAsync(
+        string accessToken, string preapprovalId, CancellationToken cancellationToken = default) =>
+        ActualizarStatusAsync(accessToken, preapprovalId, "authorized", "reanudar", cancellationToken);
+
+    private async Task<Result> ActualizarStatusAsync(
+        string accessToken, string preapprovalId, string status, string accion, CancellationToken cancellationToken)
     {
         using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"{BaseUrl}/preapproval/{preapprovalId}");
         httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        httpRequest.Content = JsonContent.Create(new { status = "cancelled" });
+        httpRequest.Content = JsonContent.Create(new { status });
 
         try
         {
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return Result.Failure($"Mercado Pago no pudo cancelar la suscripción ({(int)response.StatusCode}).");
+                return Result.Failure($"Mercado Pago no pudo {accion} la suscripción ({(int)response.StatusCode}).");
 
             return Result.Success();
         }
