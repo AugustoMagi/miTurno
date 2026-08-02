@@ -46,9 +46,13 @@ public class Suscripcion : BaseEntity
     /// <summary>
     /// Determina si el negocio conserva acceso al sistema (prueba o pago vigente).
     /// De esto depende si su link público de reservas sigue expuesto.
+    /// Cancelada también cuenta como activa mientras no se cumpla la fecha de vencimiento: cancelar
+    /// (sea desde MiTurno, desde la propia cuenta de Mercado Pago, o por un SysAdmin) sólo apaga la
+    /// renovación automática, no corta el acceso al período ya pago. Vencida es el único estado que
+    /// bloquea sin importar la fecha.
     /// </summary>
     public bool EstaActiva =>
-        Estado is EstadoSuscripcion.Activa or EstadoSuscripcion.EnPrueba
+        Estado != EstadoSuscripcion.Vencida
         && FechaProximoVencimiento >= DateTime.UtcNow;
 
     /// <summary>

@@ -85,8 +85,10 @@ public class ResolverNegocioPublicoServiceTests
     }
 
     [Fact]
-    public async Task ResolverAsync_ConSuscripcionCancelada_BloqueaElAcceso()
+    public async Task ResolverAsync_ConSuscripcionCanceladaPeroVigente_PermiteElAcceso()
     {
+        // Cancelar sólo apaga la renovación automática: el negocio conserva el acceso hasta que se
+        // cumpla la fecha de vencimiento ya pagada.
         var negocio = Negocio.Crear("Cancha Norte", "cancha-norte", "negocio@test.com");
         var plan = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
         var suscripcion = Suscripcion.IniciarPrueba(negocio.Id, plan);
@@ -96,6 +98,6 @@ public class ResolverNegocioPublicoServiceTests
 
         var result = await _service.ResolverAsync(negocio.Slug);
 
-        result.IsFailure.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
     }
 }

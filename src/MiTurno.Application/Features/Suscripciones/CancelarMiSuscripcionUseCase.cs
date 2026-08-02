@@ -10,6 +10,8 @@ namespace MiTurno.Application.Features.Suscripciones;
 /// ya está cancelada en Mercado Pago (ej. nunca se llegó a autorizar, o el negocio la canceló desde
 /// su propia cuenta), no hay nada que cobre: se salta el intento de cancelarla ahí, porque Mercado
 /// Pago rechaza cancelar una Preapproval que ya está cancelada y eso bloquearía la baja local sin motivo.
+/// Cancelar acá sólo apaga la renovación automática: <see cref="Domain.Entities.Suscripcion.EstaActiva"/>
+/// sigue dando acceso hasta la fecha de vencimiento ya paga, no lo corta al toque.
 /// </summary>
 public class CancelarMiSuscripcionUseCase
 {

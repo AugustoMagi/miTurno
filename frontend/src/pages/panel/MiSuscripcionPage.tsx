@@ -18,7 +18,7 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { CheckIcon } from '../../components/icons'
+import { CheckIcon, XIcon } from '../../components/icons'
 
 const ESTADO_LABEL: Record<EstadoSuscripcion, string> = {
   [EstadoSuscripcion.EnPrueba]: 'En prueba',
@@ -41,9 +41,6 @@ function TextoVencimiento({ suscripcion }: { suscripcion: MiSuscripcion }) {
   const dias = diasRestantes(suscripcion.fechaProximoVencimiento)
   const fecha = suscripcion.fechaProximoVencimiento.slice(0, 10)
 
-  if (suscripcion.estado === EstadoSuscripcion.Cancelada) {
-    return <p className="text-sm text-slate-500">Vencía el {fecha}.</p>
-  }
   if (dias < 0) {
     return <p className="text-sm text-red-600">Venció el {fecha}.</p>
   }
@@ -53,6 +50,25 @@ function TextoVencimiento({ suscripcion }: { suscripcion: MiSuscripcion }) {
   return (
     <p className="text-sm text-slate-500">
       Vence en {dias} día{dias === 1 ? '' : 's'} ({fecha}).
+    </p>
+  )
+}
+
+function TextoCobroAutomatico({ suscripcion }: { suscripcion: MiSuscripcion }) {
+  const fecha = suscripcion.fechaProximoVencimiento.slice(0, 10)
+
+  if (suscripcion.cobroAutomaticoActivo) {
+    return (
+      <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+        <CheckIcon className="h-4 w-4" />
+        Cobro automático activo: se renueva solo el {fecha}.
+      </p>
+    )
+  }
+  return (
+    <p className="flex items-center gap-1.5 text-sm font-medium text-slate-500">
+      <XIcon className="h-4 w-4" />
+      Cobro automático desactivado: no se te va a volver a cobrar.
     </p>
   )
 }
@@ -215,7 +231,12 @@ export function MiSuscripcionPage() {
   }
 
   async function handleCancelar() {
-    if (!window.confirm('¿Seguro que querés cancelar tu suscripción? Perdés acceso al finalizar el período vigente.')) {
+    const fecha = suscripcion?.fechaProximoVencimiento.slice(0, 10)
+    if (
+      !window.confirm(
+        `¿Seguro que querés cancelar el cobro automático? No se te va a volver a cobrar, pero conservás el acceso hasta el ${fecha}.`,
+      )
+    ) {
       return
     }
     setCancelando(true)
@@ -261,6 +282,7 @@ export function MiSuscripcionPage() {
             </span>
           </div>
           <TextoVencimiento suscripcion={suscripcion} />
+          {suscripcion.planPrecio > 0 && <TextoCobroAutomatico suscripcion={suscripcion} />}
         </Card>
       )}
 
@@ -290,12 +312,10 @@ export function MiSuscripcionPage() {
 
       {suscripcion !== null && (suscripcion.estado !== EstadoSuscripcion.Cancelada || suscripcion.cobroAutomaticoActivo) && (
         <Card className="flex flex-col gap-3">
-          <h2 className="font-semibold text-slate-900">Cancelar suscripción</h2>
+          <h2 className="font-semibold text-slate-900">Cancelar cobro automático</h2>
           <p className="text-sm text-slate-500">
-            {suscripcion.cobroAutomaticoActivo
-              ? 'También cancela el cobro automático en Mercado Pago: no te va a cobrar de nuevo.'
-              : 'Dejás de tener acceso al finalizar el período vigente.'}{' '}
-            Podés volver a suscribirte cuando quieras.
+            Mercado Pago no te va a volver a cobrar, pero seguís teniendo acceso al plan hasta el{' '}
+            {suscripcion.fechaProximoVencimiento.slice(0, 10)}. Podés volver a suscribirte cuando quieras.
           </p>
           <Button
             variant="secondary"
@@ -303,7 +323,7 @@ export function MiSuscripcionPage() {
             onClick={handleCancelar}
             className="self-start border-red-300 text-red-600 hover:bg-red-50"
           >
-            Cancelar suscripción
+            Cancelar cobro automático
           </Button>
         </Card>
       )}
