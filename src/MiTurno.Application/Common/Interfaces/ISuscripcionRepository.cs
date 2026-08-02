@@ -18,4 +18,10 @@ public interface ISuscripcionRepository : IRepository<Suscripcion>
 
     /// <summary>Si algún negocio tiene (o tuvo) una Suscripcion contra este Plan, no se lo puede eliminar.</summary>
     Task<bool> ExisteConPlanIdAsync(Guid planId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Suscripciones de este plan con cobro automático activo (Preapproval), para sincronizar el
+    /// monto en Mercado Pago cuando cambia el precio del plan.
+    /// </summary>
+    Task<IReadOnlyList<Suscripcion>> GetConPreapprovalPorPlanIdAsync(Guid planId, CancellationToken cancellationToken = default);
 }

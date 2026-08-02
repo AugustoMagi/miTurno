@@ -10,13 +10,24 @@ public class ActualizarPlanUseCase
 {
     private readonly IValidator<ActualizarPlanRequest> _validator;
     private readonly IPlanRepository _planRepository;
+    private readonly ISuscripcionRepository _suscripcionRepository;
+    private readonly IPlataformaPagoConfiguracion _plataformaPagoConfiguracion;
+    private readonly IPagoRecurrenteGateway _pagoRecurrenteGateway;
     private readonly IUnitOfWork _unitOfWork;
 
     public ActualizarPlanUseCase(
-        IValidator<ActualizarPlanRequest> validator, IPlanRepository planRepository, IUnitOfWork unitOfWork)
+        IValidator<ActualizarPlanRequest> validator,
+        IPlanRepository planRepository,
+        ISuscripcionRepository suscripcionRepository,
+        IPlataformaPagoConfiguracion plataformaPagoConfiguracion,
+        IPagoRecurrenteGateway pagoRecurrenteGateway,
+        IUnitOfWork unitOfWork)
     {
         _validator = validator;
         _planRepository = planRepository;
+        _suscripcionRepository = suscripcionRepository;
+        _plataformaPagoConfiguracion = plataformaPagoConfiguracion;
+        _pagoRecurrenteGateway = pagoRecurrenteGateway;
         _unitOfWork = unitOfWork;
     }
 
@@ -32,6 +43,8 @@ public class ActualizarPlanUseCase
         if (plan is null)
             return Result.Failure<PlanResponse>("Plan no encontrado.");
 
+        var precioAnterior = plan.Precio;
+
         try
         {
             plan.Actualizar(
@@ -40,6 +53,22 @@ public class ActualizarPlanUseCase
 
             _planRepository.Update(plan);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            // Best-effort: si cambió el precio, se sincroniza el monto en cada Preapproval de Mercado
+            // Pago que ya esté cobrando este plan, para que el próximo cobro automático refleje el
+            // nuevo precio. Si alguna falla (caída puntual de MP), el precio del plan ya quedó
+            // guardado igual; esa suscripción puntual seguirá cobrando el monto viejo hasta que se
+            // reintente (p. ej. reeditando el plan).
+            if (plan.Precio != precioAnterior)
+            {
+                var suscripciones = await _suscripcionRepository.GetConPreapprovalPorPlanIdAsync(plan.Id, cancellationToken);
+                foreach (var suscripcion in suscripciones)
+                {
+                    await _pagoRecurrenteGateway.ActualizarMontoPreapprovalAsync(
+                        _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId!,
+                        plan.Precio, cancellationToken);
+                }
+            }
 
             return Result.Success(plan.ToResponse());
         }

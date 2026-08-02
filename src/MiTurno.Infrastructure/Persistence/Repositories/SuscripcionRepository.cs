@@ -28,6 +28,12 @@ public class SuscripcionRepository : Repository<Suscripcion>, ISuscripcionReposi
     public Task<bool> ExisteConPlanIdAsync(Guid planId, CancellationToken cancellationToken = default) =>
         DbSet.AnyAsync(s => s.PlanId == planId, cancellationToken);
 
+    public async Task<IReadOnlyList<Suscripcion>> GetConPreapprovalPorPlanIdAsync(
+        Guid planId, CancellationToken cancellationToken = default) =>
+        await DbSet
+            .Where(s => s.PlanId == planId && s.MercadoPagoPreapprovalId != null)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Suscripcion>> GetPendientesDeNotificarVencimientoAsync(
         DateTime hasta, CancellationToken cancellationToken = default) =>
         await DbSet
