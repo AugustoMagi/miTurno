@@ -268,7 +268,7 @@ export function MiSuscripcionPage() {
   // plan (no el mismo de siempre), se cobra ya mismo en vez de esperar al vencimiento del período
   // viejo: el negocio decidió pagar el nuevo precio ahora.
   async function handleSeleccionarPlan(plan: PlanPublico) {
-    const esCambioDePlan = suscripcion !== null && suscripcion.planId !== plan.id
+    const esCambioDePlan = suscripcion != null && suscripcion.planId !== plan.id
     setProcesandoPlanId(plan.id)
     setError(null)
     try {
