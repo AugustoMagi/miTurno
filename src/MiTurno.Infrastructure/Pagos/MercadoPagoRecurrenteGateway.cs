@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
 using MiTurno.Domain.Enums;
@@ -17,11 +18,18 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
 {
     private const string BaseUrl = "https://api.mercadopago.com";
 
-    private readonly HttpClient _httpClient;
+    // Mensaje genérico para cualquier rechazo o falla de red hablando con Mercado Pago: el detalle
+    // real (código, body de error, excepción) sólo se loguea acá adentro — nunca sale de este
+    // gateway hacia el Result.Failure, que el negocio termina viendo tal cual en el frontend.
+    private const string ErrorGenerico = "Ocurrió un error al comunicarnos con Mercado Pago. Probá de nuevo en unos minutos.";
 
-    public MercadoPagoRecurrenteGateway(HttpClient httpClient)
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<MercadoPagoRecurrenteGateway> _logger;
+
+    public MercadoPagoRecurrenteGateway(HttpClient httpClient, ILogger<MercadoPagoRecurrenteGateway> logger)
     {
         _httpClient = httpClient;
+        _logger = logger;
     }
 
     public async Task<Result<PreapprovalCreadoResult>> CrearPreapprovalAsync(
@@ -63,21 +71,24 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                var detalle = await LeerMensajeDeErrorAsync(response, cancellationToken);
-                return Result.Failure<PreapprovalCreadoResult>(
-                    $"Mercado Pago rechazó la creación de la suscripción ({(int)response.StatusCode}){detalle}.");
+                await LoguearErrorAsync(response, "crear la Preapproval", cancellationToken);
+                return Result.Failure<PreapprovalCreadoResult>(ErrorGenerico);
             }
 
             var body = await response.Content.ReadFromJsonAsync<PreapprovalResponse>(cancellationToken);
             var initPoint = body?.InitPoint ?? body?.SandboxInitPoint;
             if (string.IsNullOrEmpty(body?.Id) || string.IsNullOrEmpty(initPoint))
-                return Result.Failure<PreapprovalCreadoResult>("Respuesta inesperada de Mercado Pago al crear la suscripción.");
+            {
+                _logger.LogWarning("Mercado Pago devolvió una respuesta inesperada al crear la Preapproval: {Body}", body);
+                return Result.Failure<PreapprovalCreadoResult>(ErrorGenerico);
+            }
 
             return Result.Success(new PreapprovalCreadoResult(body.Id, initPoint));
         }
         catch (HttpRequestException ex)
         {
-            return Result.Failure<PreapprovalCreadoResult>($"No se pudo contactar a Mercado Pago: {ex.Message}");
+            _logger.LogError(ex, "No se pudo contactar a Mercado Pago para crear la Preapproval.");
+            return Result.Failure<PreapprovalCreadoResult>(ErrorGenerico);
         }
     }
 
@@ -91,18 +102,24 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         {
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return Result.Failure<PreapprovalEstadoResult>(
-                    $"Mercado Pago no devolvió la suscripción {preapprovalId} ({(int)response.StatusCode}).");
+            {
+                await LoguearErrorAsync(response, $"consultar la Preapproval {preapprovalId}", cancellationToken);
+                return Result.Failure<PreapprovalEstadoResult>(ErrorGenerico);
+            }
 
             var body = await response.Content.ReadFromJsonAsync<PreapprovalResponse>(cancellationToken);
             if (string.IsNullOrEmpty(body?.Id) || string.IsNullOrEmpty(body.Status))
-                return Result.Failure<PreapprovalEstadoResult>("Respuesta inesperada de Mercado Pago al consultar la suscripción.");
+            {
+                _logger.LogWarning("Mercado Pago devolvió una respuesta inesperada al consultar la Preapproval {PreapprovalId}: {Body}", preapprovalId, body);
+                return Result.Failure<PreapprovalEstadoResult>(ErrorGenerico);
+            }
 
             return Result.Success(new PreapprovalEstadoResult(body.Id, body.Status, body.ExternalReference));
         }
         catch (HttpRequestException ex)
         {
-            return Result.Failure<PreapprovalEstadoResult>($"No se pudo contactar a Mercado Pago: {ex.Message}");
+            _logger.LogError(ex, "No se pudo contactar a Mercado Pago para consultar la Preapproval {PreapprovalId}.", preapprovalId);
+            return Result.Failure<PreapprovalEstadoResult>(ErrorGenerico);
         }
     }
 
@@ -130,15 +147,16 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                var detalle = await LeerMensajeDeErrorAsync(response, cancellationToken);
-                return Result.Failure($"Mercado Pago no pudo {accion} la suscripción ({(int)response.StatusCode}){detalle}.");
+                await LoguearErrorAsync(response, $"{accion} la Preapproval {preapprovalId}", cancellationToken);
+                return Result.Failure(ErrorGenerico);
             }
 
             return Result.Success();
         }
         catch (HttpRequestException ex)
         {
-            return Result.Failure($"No se pudo contactar a Mercado Pago: {ex.Message}");
+            _logger.LogError(ex, "No se pudo contactar a Mercado Pago para {Accion} la Preapproval {PreapprovalId}.", accion, preapprovalId);
+            return Result.Failure(ErrorGenerico);
         }
     }
 
@@ -154,15 +172,16 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                var detalle = await LeerMensajeDeErrorAsync(response, cancellationToken);
-                return Result.Failure($"Mercado Pago no pudo actualizar el monto de la suscripción ({(int)response.StatusCode}){detalle}.");
+                await LoguearErrorAsync(response, $"actualizar el monto de la Preapproval {preapprovalId}", cancellationToken);
+                return Result.Failure(ErrorGenerico);
             }
 
             return Result.Success();
         }
         catch (HttpRequestException ex)
         {
-            return Result.Failure($"No se pudo contactar a Mercado Pago: {ex.Message}");
+            _logger.LogError(ex, "No se pudo contactar a Mercado Pago para actualizar el monto de la Preapproval {PreapprovalId}.", preapprovalId);
+            return Result.Failure(ErrorGenerico);
         }
     }
 
@@ -176,12 +195,17 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         {
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return Result.Failure<CargoRecurrenteResult>(
-                    $"Mercado Pago no devolvió el cargo {pagoExternoId} ({(int)response.StatusCode}).");
+            {
+                await LoguearErrorAsync(response, $"consultar el cargo {pagoExternoId}", cancellationToken);
+                return Result.Failure<CargoRecurrenteResult>(ErrorGenerico);
+            }
 
             var body = await response.Content.ReadFromJsonAsync<CargoRecurrenteResponse>(cancellationToken);
             if (body?.Id is null || string.IsNullOrEmpty(body.PreapprovalId) || body.Status is null)
-                return Result.Failure<CargoRecurrenteResult>("Respuesta inesperada de Mercado Pago al consultar el cargo.");
+            {
+                _logger.LogWarning("Mercado Pago devolvió una respuesta inesperada al consultar el cargo {PagoExternoId}: {Body}", pagoExternoId, body);
+                return Result.Failure<CargoRecurrenteResult>(ErrorGenerico);
+            }
 
             var estado = body.Status switch
             {
@@ -194,7 +218,8 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         }
         catch (HttpRequestException ex)
         {
-            return Result.Failure<CargoRecurrenteResult>($"No se pudo contactar a Mercado Pago: {ex.Message}");
+            _logger.LogError(ex, "No se pudo contactar a Mercado Pago para consultar el cargo {PagoExternoId}.", pagoExternoId);
+            return Result.Failure<CargoRecurrenteResult>(ErrorGenerico);
         }
     }
 
@@ -209,8 +234,10 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         {
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return Result.Failure<string?>(
-                    $"Mercado Pago no devolvió los cargos de la suscripción {preapprovalId} ({(int)response.StatusCode}).");
+            {
+                await LoguearErrorAsync(response, $"consultar los cargos de la Preapproval {preapprovalId}", cancellationToken);
+                return Result.Failure<string?>(ErrorGenerico);
+            }
 
             var body = await response.Content.ReadFromJsonAsync<AuthorizedPaymentsSearchResponse>(cancellationToken);
             var ultimoProcesado = body?.Results?
@@ -222,7 +249,8 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         }
         catch (HttpRequestException ex)
         {
-            return Result.Failure<string?>($"No se pudo contactar a Mercado Pago: {ex.Message}");
+            _logger.LogError(ex, "No se pudo contactar a Mercado Pago para consultar los cargos de la Preapproval {PreapprovalId}.", preapprovalId);
+            return Result.Failure<string?>(ErrorGenerico);
         }
     }
 
@@ -231,11 +259,10 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
     private static (int Frequency, string FrequencyType) MapearPeriodicidad(Periodicidad periodicidad) =>
         periodicidad == Periodicidad.Mensual ? (1, "months") : (12, "months");
 
-    // Sin esto, un rechazo de Mercado Pago sólo mostraba el código HTTP (ej. "(400)"), sin decir qué
-    // campo estaba mal — imposible de diagnosticar a distancia. El body de error de MP normalmente
-    // trae un campo "message" con el motivo puntual; si no se puede parsear, se manda el body crudo
-    // (acotado) en vez de nada.
-    private static async Task<string> LeerMensajeDeErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    // El detalle real de un rechazo de Mercado Pago (código + body de error, que suele traer un
+    // campo "message" bien puntual) sólo se loguea acá — nunca cruza hacia el Result.Failure que
+    // termina en el frontend, para no exponerle al negocio un error técnico en su propio idioma.
+    private async Task LoguearErrorAsync(HttpResponseMessage response, string accion, CancellationToken cancellationToken)
     {
         string body;
         try
@@ -244,27 +271,13 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         }
         catch
         {
-            return string.Empty;
+            body = string.Empty;
         }
 
-        if (string.IsNullOrWhiteSpace(body))
-            return string.Empty;
-
-        try
-        {
-            var error = JsonSerializer.Deserialize<MercadoPagoErrorResponse>(body);
-            if (!string.IsNullOrWhiteSpace(error?.Message))
-                return $": {error.Message}";
-        }
-        catch (JsonException)
-        {
-            // el body no era el JSON de error esperado, se cae al texto crudo de abajo
-        }
-
-        return $": {(body.Length > 300 ? body[..300] : body)}";
+        _logger.LogWarning(
+            "Mercado Pago rechazó el intento de {Accion} ({StatusCode}): {Body}",
+            accion, (int)response.StatusCode, body);
     }
-
-    private record MercadoPagoErrorResponse(string? Message);
 
     private record PreapprovalResponse(
         string? Id,
