@@ -68,6 +68,14 @@ public class ObtenerMiSuscripcionUseCase
                     suscripcion = await _suscripcionRepository.GetByNegocioIdAsync(negocioId, cancellationToken) ?? suscripcion;
                 }
             }
+
+            // "pending" es el estado inicial de toda Preapproval recién creada, antes de que el
+            // negocio termine (o abandone) el checkout de Mercado Pago: todavía no autorizó nada, así
+            // que reportar CobroAutomaticoActivo en true acá (como haría el mapper mirando sólo si hay
+            // un id guardado) sería mentirle al frontend — el botón de "volver de MP" necesita esta
+            // distinción para poder avisarle al negocio si el pago quedó pendiente o se confirmó.
+            if (estadoResult.IsSuccess && estadoResult.Value.Status == "pending")
+                return Result.Success(suscripcion.ToMiSuscripcionResponse() with { CobroAutomaticoActivo = false });
         }
 
         return Result.Success(suscripcion.ToMiSuscripcionResponse());

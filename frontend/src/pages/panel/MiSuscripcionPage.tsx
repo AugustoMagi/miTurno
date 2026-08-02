@@ -28,6 +28,14 @@ const ESTADO_LABEL: Record<EstadoSuscripcion, string> = {
   [EstadoSuscripcion.Cancelada]: 'Cancelada',
 }
 
+// Cancelada sólo apaga la renovación automática — mientras estaActiva sea true, el negocio sigue
+// con acceso pleno, así que mostrarle literalmente "Cancelada" es engañoso (parece que perdió todo).
+function estadoVisibleLabel(suscripcion: MiSuscripcion): string {
+  if (!suscripcion.estaActiva) return ESTADO_LABEL[EstadoSuscripcion.Vencida]
+  if (suscripcion.estado === EstadoSuscripcion.EnPrueba) return ESTADO_LABEL[EstadoSuscripcion.EnPrueba]
+  return ESTADO_LABEL[EstadoSuscripcion.Activa]
+}
+
 const PERIODICIDAD_LABEL: Record<Periodicidad, string> = {
   [Periodicidad.Mensual]: 'mensual',
   [Periodicidad.Anual]: 'anual',
@@ -173,7 +181,9 @@ export function MiSuscripcionPage() {
   const [suscripcion, setSuscripcion] = useState<MiSuscripcion | null | undefined>(undefined)
   const [planes, setPlanes] = useState<PlanPublico[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [vuelvoDeMercadoPago, setVuelvoDeMercadoPago] = useState(false)
+  const [resultadoMercadoPago, setResultadoMercadoPago] = useState<
+    'pendiente' | 'confirmado' | 'no-detectado' | null
+  >(null)
 
   const [procesandoPlanId, setProcesandoPlanId] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState(false)
@@ -202,21 +212,24 @@ export function MiSuscripcionPage() {
 
   useEffect(cargar, [])
 
-  // Mercado Pago vuelve acá después de que el negocio autoriza (o no) el cobro recurrente. La
-  // activación llega después, por webhook, así que puede tardar en reflejarse.
+  // Mercado Pago vuelve acá tanto si el negocio autorizó el cobro recurrente como si cerró el
+  // checkout sin completarlo — no hay forma de distinguir eso por la URL de vuelta, así que hay que
+  // sondear el estado real para saber cuál de las dos pasó.
   useEffect(() => {
     if (searchParams.get('mp') === 'vuelta') {
-      setVuelvoDeMercadoPago(true)
+      setResultadoMercadoPago('pendiente')
       navigate('/panel/suscripcion', { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Mientras esperamos que el webhook confirme el primer cobro, la suscripción sigue mostrando el
-  // estado viejo (ej. "Cancelada" si se venía de cancelar y volver a suscribir). Sondeamos unas
-  // cuantas veces hasta ver que el estado cambió, en vez de dejar la card desactualizada para siempre.
+  // Mientras esperamos que el webhook (o la reconciliación en vivo de ObtenerMiSuscripcion) confirme
+  // el cobro, sondeamos unas cuantas veces. Si CobroAutomaticoActivo se prende, el pago se confirmó;
+  // si se agotan los intentos sin que eso pase, lo más probable es que el negocio haya cerrado el
+  // checkout sin llegar a autorizar nada (Mercado Pago deja la Preapproval en "pending" para siempre
+  // en ese caso, así que seguir esperando no cambiaría nada).
   useEffect(() => {
-    if (!vuelvoDeMercadoPago) return
+    if (resultadoMercadoPago !== 'pendiente') return
 
     let cancelado = false
     let intentos = 0
@@ -227,15 +240,18 @@ export function MiSuscripcionPage() {
         const actual = await obtenerMiSuscripcion()
         if (cancelado) return
         setSuscripcion(actual)
-        if (actual.estado !== EstadoSuscripcion.Cancelada) {
-          setVuelvoDeMercadoPago(false)
+        if (actual.cobroAutomaticoActivo) {
+          setResultadoMercadoPago('confirmado')
           return
         }
       } catch {
         // error transitorio: seguimos sondeando, no cortamos por esto
       }
-      if (!cancelado && intentos < 15) {
+      if (cancelado) return
+      if (intentos < 15) {
         setTimeout(sondear, 4000)
+      } else {
+        setResultadoMercadoPago('no-detectado')
       }
     }
 
@@ -244,7 +260,7 @@ export function MiSuscripcionPage() {
       cancelado = true
       clearTimeout(timeoutId)
     }
-  }, [vuelvoDeMercadoPago])
+  }, [resultadoMercadoPago])
 
   // Elige/cambia el plan (según si ya había una suscripción asignada) y, si el plan tiene costo y
   // todavía no hay cobro automático activo para él, manda directo a pagarlo con Mercado Pago: un
@@ -332,9 +348,21 @@ export function MiSuscripcionPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold text-slate-900">Mi suscripción</h1>
 
-      {vuelvoDeMercadoPago && (
+      {resultadoMercadoPago === 'pendiente' && (
         <div className="rounded-xl border border-link-200 bg-link-50 px-4 py-3 text-sm text-link-700">
-          Estamos confirmando tu suscripción con Mercado Pago. Puede tardar unos minutos en reflejarse acá.
+          Estamos confirmando tu pago con Mercado Pago. Puede tardar unos minutos en reflejarse acá.
+        </div>
+      )}
+      {resultadoMercadoPago === 'confirmado' && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          ¡Listo! Confirmamos tu pago y el cobro automático quedó activado.
+        </div>
+      )}
+      {resultadoMercadoPago === 'no-detectado' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          No detectamos que hayas completado el pago en Mercado Pago. Si no llegaste a pagar, no pasa
+          nada — podés intentarlo de nuevo cuando quieras. Si ya pagaste, puede tardar unos minutos más
+          en reflejarse acá.
         </div>
       )}
       {error && <ErrorBanner message={error} />}
@@ -353,7 +381,7 @@ export function MiSuscripcionPage() {
                 suscripcion.estaActiva ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
               }`}
             >
-              {ESTADO_LABEL[suscripcion.estado]}
+              {estadoVisibleLabel(suscripcion)}
             </span>
           </div>
           <TextoVencimiento suscripcion={suscripcion} />

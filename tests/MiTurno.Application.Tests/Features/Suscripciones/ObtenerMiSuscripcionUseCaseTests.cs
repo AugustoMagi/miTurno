@@ -121,6 +121,28 @@ public class ObtenerMiSuscripcionUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ConPreapprovalPendienteEnMercadoPago_ReportaCobroAutomaticoInactivo()
+    {
+        // "pending" es el estado de una Preapproval recién creada mientras el negocio todavía no
+        // terminó (o abandonó) el checkout de Mercado Pago: no debe reportarse como si ya estuviera
+        // cobrando, aunque el id ya esté guardado localmente desde que se creó.
+        var negocioId = Guid.NewGuid();
+        var plan = Plan.Crear("Básico", 5000m, Periodicidad.Mensual, 3, 200);
+        var suscripcion = Suscripcion.IniciarPrueba(negocioId, plan);
+        suscripcion.AsignarPreapproval("preapproval-1");
+        _suscripcionRepository.GetByNegocioIdAsync(negocioId).Returns(suscripcion);
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-1")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-1", "pending", null)));
+
+        var result = await _useCase.ExecuteAsync(negocioId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.CobroAutomaticoActivo.Should().BeFalse();
+        suscripcion.MercadoPagoPreapprovalId.Should().Be("preapproval-1");
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ConPreapprovalCanceladoEnMercadoPago_LoSueltaYNoQuedaComoActivo()
     {
         var negocioId = Guid.NewGuid();
