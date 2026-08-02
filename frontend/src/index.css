@@ -120,6 +120,29 @@ h4 {
   }
 }
 
+/* Cada capa arranca desfasada con animation-delay negativo (ver HeroCanchasFondo) para que se
+   vayan turnando; la ventana "prendida" (6%-26% de 30s ≈ 6s) se solapa con la de la capa
+   siguiente (que arranca en el 20%) para que el cross-fade sea continuo, sin quedar todo apagado. */
+@keyframes cancha-fade {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(1) rotate(0deg);
+  }
+  6% {
+    opacity: 0.18;
+    transform: scale(1.03) rotate(1deg);
+  }
+  26% {
+    opacity: 0.18;
+    transform: scale(1.03) rotate(1deg);
+  }
+  32% {
+    opacity: 0;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
 .animate-blob {
   animation: blob-float 9s ease-in-out infinite;
 }
@@ -131,6 +154,10 @@ h4 {
 
 .animate-card-float {
   animation: card-float 6s ease-in-out infinite;
+}
+
+.animate-cancha-fade {
+  animation: cancha-fade 30s ease-in-out infinite;
 }
 
 .animate-fade-in-up {
@@ -157,7 +184,8 @@ h4 {
   .animate-blob-delay,
   .animate-card-float,
   .animate-fade-in-up,
-  .animate-scale-in {
+  .animate-scale-in,
+  .animate-cancha-fade {
     animation: none;
   }
 

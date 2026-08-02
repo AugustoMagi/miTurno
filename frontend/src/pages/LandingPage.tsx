@@ -7,6 +7,7 @@ import type { PlanPublico } from '../types/planPublico'
 import { Spinner } from '../components/Spinner'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { Reveal } from '../components/Reveal'
+import { HeroCanchasFondo } from '../components/HeroCanchasFondo'
 
 const PERIODICIDAD_LABEL: Record<Periodicidad, string> = {
   [Periodicidad.Mensual]: 'mes',
@@ -295,10 +296,11 @@ export function LandingPage() {
       </header>
 
       <main className="flex-1">
-        <section className="relative overflow-hidden">
+        <section className="relative z-0 overflow-hidden">
           <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
             <div className="animate-blob absolute -top-32 -right-32 h-96 w-96 rounded-full bg-accent-100/70 blur-3xl" />
             <div className="animate-blob-delay absolute top-40 -left-32 h-72 w-72 rounded-full bg-link-50 blur-3xl" />
+            <HeroCanchasFondo />
           </div>
 
           <div className="mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-2 lg:items-center">
