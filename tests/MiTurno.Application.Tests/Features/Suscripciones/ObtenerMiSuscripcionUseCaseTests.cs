@@ -9,6 +9,7 @@ namespace MiTurno.Application.Tests.Features.Suscripciones;
 public class ObtenerMiSuscripcionUseCaseTests
 {
     private readonly ISuscripcionRepository _suscripcionRepository = Substitute.For<ISuscripcionRepository>();
+    private readonly IPlanRepository _planRepository = Substitute.For<IPlanRepository>();
     private readonly IPlataformaPagoConfiguracion _plataformaPagoConfiguracion = Substitute.For<IPlataformaPagoConfiguracion>();
     private readonly IPagoRecurrenteGateway _pagoRecurrenteGateway = Substitute.For<IPagoRecurrenteGateway>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -20,7 +21,7 @@ public class ObtenerMiSuscripcionUseCaseTests
         var procesarNotificacionRecurrenteUseCase = new ProcesarNotificacionRecurrenteUseCase(
             _suscripcionRepository, _plataformaPagoConfiguracion, _pagoRecurrenteGateway, _unitOfWork);
         _useCase = new ObtenerMiSuscripcionUseCase(
-            _suscripcionRepository, _plataformaPagoConfiguracion, _pagoRecurrenteGateway,
+            _suscripcionRepository, _planRepository, _plataformaPagoConfiguracion, _pagoRecurrenteGateway,
             procesarNotificacionRecurrenteUseCase, _unitOfWork);
     }
 
@@ -140,6 +141,101 @@ public class ObtenerMiSuscripcionUseCaseTests
         result.Value.CobroAutomaticoActivo.Should().BeFalse();
         suscripcion.MercadoPagoPreapprovalId.Should().Be("preapproval-1");
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConCambioDePlanPendienteTodaviaPending_MantieneElPlanYCobroVigentes()
+    {
+        // El caso que rompía la app: cambiar de Pro a Estándar entraba a MP, y si el negocio no
+        // pagaba, la card ya mostraba Estándar igual. Mientras la Preapproval nueva siga "pending",
+        // el plan y el cobro automático reportados tienen que seguir siendo los de Pro (el vigente).
+        var negocioId = Guid.NewGuid();
+        var planPro = Plan.Crear("Pro", 8000m, Periodicidad.Mensual, 5, 500);
+        var suscripcion = Suscripcion.IniciarPrueba(negocioId, planPro);
+        suscripcion.AsignarPreapproval("preapproval-pro-vigente");
+        var planEstandar = Plan.Crear("Estándar", 5000m, Periodicidad.Mensual, 3, 200);
+        suscripcion.IniciarCambioDePlanConPago(planEstandar.Id, "preapproval-estandar-pendiente");
+        _suscripcionRepository.GetByNegocioIdAsync(negocioId).Returns(suscripcion);
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-estandar-pendiente")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-estandar-pendiente", "pending", null)));
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-pro-vigente")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-pro-vigente", "authorized", null)));
+        _pagoRecurrenteGateway.BuscarUltimoCargoIdAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Result.Success<string?>(null));
+
+        var result = await _useCase.ExecuteAsync(negocioId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PlanId.Should().Be(planPro.Id);
+        result.Value.PlanNombre.Should().Be("Pro");
+        result.Value.CobroAutomaticoActivo.Should().BeTrue();
+        suscripcion.PlanId.Should().Be(planPro.Id);
+        suscripcion.MercadoPagoPreapprovalId.Should().Be("preapproval-pro-vigente");
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _pagoRecurrenteGateway.DidNotReceive().CancelarPreapprovalAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConCambioDePlanPendienteAutorizado_ConfirmaElCambioYCancelaLaVieja()
+    {
+        var negocioId = Guid.NewGuid();
+        var planPro = Plan.Crear("Pro", 8000m, Periodicidad.Mensual, 5, 500);
+        var suscripcion = Suscripcion.IniciarPrueba(negocioId, planPro);
+        suscripcion.AsignarPreapproval("preapproval-pro-vigente");
+        var planEstandar = Plan.Crear("Estándar", 5000m, Periodicidad.Mensual, 3, 200);
+        suscripcion.IniciarCambioDePlanConPago(planEstandar.Id, "preapproval-estandar-pendiente");
+        _suscripcionRepository.GetByNegocioIdAsync(negocioId).Returns(suscripcion);
+        _planRepository.GetByIdAsync(planEstandar.Id).Returns(planEstandar);
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-estandar-pendiente")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-estandar-pendiente", "authorized", null)));
+        _pagoRecurrenteGateway.CancelarPreapprovalAsync(Arg.Any<string>(), "preapproval-pro-vigente")
+            .Returns(Result.Success());
+        _pagoRecurrenteGateway.BuscarUltimoCargoIdAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Result.Success<string?>(null));
+
+        var result = await _useCase.ExecuteAsync(negocioId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PlanId.Should().Be(planEstandar.Id);
+        result.Value.PlanNombre.Should().Be("Estándar");
+        suscripcion.PlanId.Should().Be(planEstandar.Id);
+        suscripcion.MercadoPagoPreapprovalId.Should().Be("preapproval-estandar-pendiente");
+        suscripcion.PlanPendienteId.Should().BeNull();
+        suscripcion.MercadoPagoPreapprovalIdPendiente.Should().BeNull();
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _pagoRecurrenteGateway.Received(1).CancelarPreapprovalAsync(
+            Arg.Any<string>(), "preapproval-pro-vigente", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ConCambioDePlanPendienteCancelado_LoDescartaSinTocarElVigente()
+    {
+        var negocioId = Guid.NewGuid();
+        var planPro = Plan.Crear("Pro", 8000m, Periodicidad.Mensual, 5, 500);
+        var suscripcion = Suscripcion.IniciarPrueba(negocioId, planPro);
+        suscripcion.AsignarPreapproval("preapproval-pro-vigente");
+        var planEstandar = Plan.Crear("Estándar", 5000m, Periodicidad.Mensual, 3, 200);
+        suscripcion.IniciarCambioDePlanConPago(planEstandar.Id, "preapproval-estandar-pendiente");
+        _suscripcionRepository.GetByNegocioIdAsync(negocioId).Returns(suscripcion);
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-estandar-pendiente")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-estandar-pendiente", "cancelled", null)));
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-pro-vigente")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-pro-vigente", "authorized", null)));
+        _pagoRecurrenteGateway.BuscarUltimoCargoIdAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Result.Success<string?>(null));
+
+        var result = await _useCase.ExecuteAsync(negocioId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PlanId.Should().Be(planPro.Id);
+        suscripcion.PlanId.Should().Be(planPro.Id);
+        suscripcion.MercadoPagoPreapprovalId.Should().Be("preapproval-pro-vigente");
+        suscripcion.PlanPendienteId.Should().BeNull();
+        suscripcion.MercadoPagoPreapprovalIdPendiente.Should().BeNull();
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _pagoRecurrenteGateway.DidNotReceive().CancelarPreapprovalAsync(
+            Arg.Any<string>(), "preapproval-pro-vigente", Arg.Any<CancellationToken>());
     }
 
     [Fact]

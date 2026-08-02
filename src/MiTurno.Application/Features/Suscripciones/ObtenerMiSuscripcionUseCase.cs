@@ -8,6 +8,7 @@ namespace MiTurno.Application.Features.Suscripciones;
 public class ObtenerMiSuscripcionUseCase
 {
     private readonly ISuscripcionRepository _suscripcionRepository;
+    private readonly IPlanRepository _planRepository;
     private readonly IPlataformaPagoConfiguracion _plataformaPagoConfiguracion;
     private readonly IPagoRecurrenteGateway _pagoRecurrenteGateway;
     private readonly ProcesarNotificacionRecurrenteUseCase _procesarNotificacionRecurrenteUseCase;
@@ -15,12 +16,14 @@ public class ObtenerMiSuscripcionUseCase
 
     public ObtenerMiSuscripcionUseCase(
         ISuscripcionRepository suscripcionRepository,
+        IPlanRepository planRepository,
         IPlataformaPagoConfiguracion plataformaPagoConfiguracion,
         IPagoRecurrenteGateway pagoRecurrenteGateway,
         ProcesarNotificacionRecurrenteUseCase procesarNotificacionRecurrenteUseCase,
         IUnitOfWork unitOfWork)
     {
         _suscripcionRepository = suscripcionRepository;
+        _planRepository = planRepository;
         _plataformaPagoConfiguracion = plataformaPagoConfiguracion;
         _pagoRecurrenteGateway = pagoRecurrenteGateway;
         _procesarNotificacionRecurrenteUseCase = procesarNotificacionRecurrenteUseCase;
@@ -33,6 +36,41 @@ public class ObtenerMiSuscripcionUseCase
         var suscripcion = await _suscripcionRepository.GetByNegocioIdAsync(negocioId, cancellationToken);
         if (suscripcion is null)
             return Result.Failure<MiSuscripcionResponse>("Todavía no tenés una suscripción asignada.");
+
+        // Cambio de plan con pago pendiente de confirmar (ver CambiarPlanConPagoUseCase): el plan y la
+        // Preapproval vigentes de abajo todavía no se tocaron. Sólo acá, al confirmar que esta
+        // Preapproval nueva se autorizó de verdad, se aplica el cambio y se cancela la vieja — si en
+        // cambio se canceló o el negocio nunca la autorizó, se descarta sin haber tocado nada.
+        if (suscripcion.PlanPendienteId is not null && suscripcion.MercadoPagoPreapprovalIdPendiente is not null)
+        {
+            var estadoPendienteResult = await _pagoRecurrenteGateway.ObtenerPreapprovalAsync(
+                _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalIdPendiente, cancellationToken);
+
+            if (estadoPendienteResult.IsSuccess && estadoPendienteResult.Value.Status == "authorized")
+            {
+                var planPendiente = await _planRepository.GetByIdAsync(suscripcion.PlanPendienteId.Value, cancellationToken);
+                if (planPendiente is not null)
+                {
+                    var preapprovalViejoId = suscripcion.MercadoPagoPreapprovalId;
+                    suscripcion.ConfirmarCambioDePlanPendiente(planPendiente);
+                    _suscripcionRepository.Update(suscripcion);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                    if (preapprovalViejoId is not null)
+                    {
+                        await _pagoRecurrenteGateway.CancelarPreapprovalAsync(
+                            _plataformaPagoConfiguracion.AccessToken, preapprovalViejoId, cancellationToken);
+                    }
+                }
+            }
+            else if (estadoPendienteResult.IsSuccess && estadoPendienteResult.Value.Status == "cancelled")
+            {
+                suscripcion.DescartarCambioDePlanPendiente();
+                _suscripcionRepository.Update(suscripcion);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            // "pending": todavía esperando que el negocio autorice el pago, no se toca nada.
+        }
 
         if (suscripcion.MercadoPagoPreapprovalId is not null)
         {

@@ -104,6 +104,7 @@ public static class DependencyInjection
         services.AddScoped<ObtenerMiSuscripcionUseCase>();
         services.AddScoped<ElegirPlanUseCase>();
         services.AddScoped<CambiarPlanMiSuscripcionUseCase>();
+        services.AddScoped<CambiarPlanConPagoUseCase>();
         services.AddScoped<CancelarMiSuscripcionUseCase>();
         services.AddScoped<ReanudarCobroAutomaticoUseCase>();
         services.AddScoped<IniciarSuscripcionMercadoPagoUseCase>();

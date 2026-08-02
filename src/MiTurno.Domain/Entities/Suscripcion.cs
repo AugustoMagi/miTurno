@@ -28,6 +28,16 @@ public class Suscripcion : BaseEntity
     /// </summary>
     public bool CobroAutomaticoPausado { get; private set; }
 
+    /// <summary>
+    /// Plan al que se está cambiando, todavía sin confirmar el pago. Mientras esto no sea null, el
+    /// plan/la Preapproval vigentes (arriba) siguen intactos a propósito: si el negocio no llega a
+    /// pagar el plan nuevo, no tiene que perder el que ya tenía funcionando.
+    /// </summary>
+    public Guid? PlanPendienteId { get; private set; }
+
+    /// <summary>Preapproval del plan pendiente de confirmar (ver PlanPendienteId) — todavía no es la vigente.</summary>
+    public string? MercadoPagoPreapprovalIdPendiente { get; private set; }
+
     private readonly List<PagoSuscripcion> _pagos = [];
     public IReadOnlyCollection<PagoSuscripcion> Pagos => _pagos.AsReadOnly();
 
@@ -149,6 +159,52 @@ public class Suscripcion : BaseEntity
     {
         PlanId = nuevoPlan.Id;
         Plan = nuevoPlan;
+        MarcarActualizado();
+    }
+
+    /// <summary>
+    /// Arranca un cambio de plan pago: a propósito no toca ni el plan ni la Preapproval vigentes
+    /// todavía — eso recién pasa en ConfirmarCambioDePlanPendiente, cuando se confirma que esta
+    /// Preapproval nueva quedó autorizada. Así, si el negocio entra a Mercado Pago y no llega a
+    /// pagar, el plan y el cobro automático que ya tenía siguen funcionando sin cambios.
+    /// </summary>
+    public void IniciarCambioDePlanConPago(Guid planPendienteId, string preapprovalIdPendiente)
+    {
+        if (string.IsNullOrWhiteSpace(preapprovalIdPendiente))
+            throw new DomainException("El id de la Preapproval pendiente es obligatorio.");
+
+        PlanPendienteId = planPendienteId;
+        MercadoPagoPreapprovalIdPendiente = preapprovalIdPendiente;
+        MarcarActualizado();
+    }
+
+    /// <summary>
+    /// Confirma un cambio de plan pendiente: recién acá pasa a ser el plan y la Preapproval vigentes,
+    /// una vez que se verificó que el pago del plan nuevo se autorizó de verdad.
+    /// </summary>
+    public void ConfirmarCambioDePlanPendiente(Plan planConfirmado)
+    {
+        if (PlanPendienteId != planConfirmado.Id || MercadoPagoPreapprovalIdPendiente is null)
+            throw new DomainException("No hay un cambio de plan pendiente que coincida con ese plan.");
+
+        PlanId = planConfirmado.Id;
+        Plan = planConfirmado;
+        MercadoPagoPreapprovalId = MercadoPagoPreapprovalIdPendiente;
+        CobroAutomaticoPausado = false;
+        PlanPendienteId = null;
+        MercadoPagoPreapprovalIdPendiente = null;
+        MarcarActualizado();
+    }
+
+    /// <summary>
+    /// Descarta un cambio de plan pendiente que no llegó a confirmarse (el negocio no pagó, o la
+    /// Preapproval nueva quedó cancelada en Mercado Pago): el plan y el cobro automático vigentes no
+    /// se tocaron en ningún momento, así que no hay nada que revertir más que limpiar estos campos.
+    /// </summary>
+    public void DescartarCambioDePlanPendiente()
+    {
+        PlanPendienteId = null;
+        MercadoPagoPreapprovalIdPendiente = null;
         MarcarActualizado();
     }
 }

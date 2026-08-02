@@ -15,6 +15,7 @@ public class SuscripcionController : ControllerBase
     private readonly ElegirPlanUseCase _elegirPlanUseCase;
     private readonly IniciarSuscripcionMercadoPagoUseCase _iniciarSuscripcionMercadoPagoUseCase;
     private readonly CambiarPlanMiSuscripcionUseCase _cambiarPlanMiSuscripcionUseCase;
+    private readonly CambiarPlanConPagoUseCase _cambiarPlanConPagoUseCase;
     private readonly CancelarMiSuscripcionUseCase _cancelarMiSuscripcionUseCase;
     private readonly ReanudarCobroAutomaticoUseCase _reanudarCobroAutomaticoUseCase;
 
@@ -23,6 +24,7 @@ public class SuscripcionController : ControllerBase
         ElegirPlanUseCase elegirPlanUseCase,
         IniciarSuscripcionMercadoPagoUseCase iniciarSuscripcionMercadoPagoUseCase,
         CambiarPlanMiSuscripcionUseCase cambiarPlanMiSuscripcionUseCase,
+        CambiarPlanConPagoUseCase cambiarPlanConPagoUseCase,
         CancelarMiSuscripcionUseCase cancelarMiSuscripcionUseCase,
         ReanudarCobroAutomaticoUseCase reanudarCobroAutomaticoUseCase)
     {
@@ -30,6 +32,7 @@ public class SuscripcionController : ControllerBase
         _elegirPlanUseCase = elegirPlanUseCase;
         _iniciarSuscripcionMercadoPagoUseCase = iniciarSuscripcionMercadoPagoUseCase;
         _cambiarPlanMiSuscripcionUseCase = cambiarPlanMiSuscripcionUseCase;
+        _cambiarPlanConPagoUseCase = cambiarPlanConPagoUseCase;
         _cancelarMiSuscripcionUseCase = cancelarMiSuscripcionUseCase;
         _reanudarCobroAutomaticoUseCase = reanudarCobroAutomaticoUseCase;
     }
@@ -61,6 +64,15 @@ public class SuscripcionController : ControllerBase
     public async Task<IActionResult> CambiarPlan(CambiarPlanMiSuscripcionRequest request, CancellationToken cancellationToken)
     {
         var result = await _cambiarPlanMiSuscripcionUseCase.ExecuteAsync(User.GetNegocioId(), request, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
+    }
+
+    [HttpPost("cambiar-plan-con-pago")]
+    public async Task<IActionResult> CambiarPlanConPago(CambiarPlanMiSuscripcionRequest request, CancellationToken cancellationToken)
+    {
+        var webhookBaseUrl = $"{Request.Scheme}://{Request.Host}";
+        var result = await _cambiarPlanConPagoUseCase.ExecuteAsync(
+            User.GetNegocioId(), request.NuevoPlanId, webhookBaseUrl, cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error });
     }
 

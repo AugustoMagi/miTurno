@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import {
+  cambiarPlanConPago,
   cambiarPlanMiSuscripcion,
   cancelarMiSuscripcion,
   elegirPlan,
@@ -301,13 +302,16 @@ export function MiSuscripcionPage() {
     setProcesandoPlanId(plan.id)
     setError(null)
     try {
-      await cambiarPlanMiSuscripcion(plan.id)
-
       if (plan.precio > 0) {
-        const initPoint = await iniciarSuscripcionMercadoPago(true)
+        // Ojo: esto NO cambia el plan todavía — crea la Preapproval del plan nuevo sin tocar el plan
+        // ni el cobro automático vigentes. Si no llegás a pagar (cerrás MP, volvés atrás), seguís con
+        // el plan de antes; recién se confirma cuando el pago se autoriza de verdad.
+        const initPoint = await cambiarPlanConPago(plan.id)
         irAMercadoPago(initPoint)
         return
       }
+      // Plan sin costo: no hay nada que pagar, se cambia directo.
+      await cambiarPlanMiSuscripcion(plan.id)
       cargar()
       setMostrandoCambioPlan(false)
     } catch (err) {

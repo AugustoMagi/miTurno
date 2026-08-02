@@ -16,6 +16,7 @@ public class SuscripcionConfiguration : IEntityTypeConfiguration<Suscripcion>
         builder.Property(s => s.Estado).HasConversion<int>();
         builder.Property(s => s.MercadoPagoPreapprovalId).HasMaxLength(100);
         builder.Property(s => s.CobroAutomaticoPausado).HasDefaultValue(false);
+        builder.Property(s => s.MercadoPagoPreapprovalIdPendiente).HasMaxLength(100);
 
         // Propiedad calculada (Estado + FechaProximoVencimiento), no tiene columna propia.
         builder.Ignore(s => s.EstaActiva);

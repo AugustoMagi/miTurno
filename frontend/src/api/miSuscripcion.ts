@@ -23,6 +23,16 @@ export async function cambiarPlanMiSuscripcion(nuevoPlanId: string): Promise<MiS
   return data
 }
 
+// A diferencia de cambiarPlanMiSuscripcion, esto no cambia el plan al toque: crea la Preapproval del
+// plan nuevo y sólo se confirma (ver ObtenerMiSuscripcionUseCase) cuando el pago se autoriza de
+// verdad. Si no llegás a pagar, seguís con el plan y el cobro automático que ya tenías.
+export async function cambiarPlanConPago(nuevoPlanId: string): Promise<string> {
+  const { data } = await apiClient.post<{ initPoint: string }>('/api/suscripcion/cambiar-plan-con-pago', {
+    nuevoPlanId,
+  })
+  return data.initPoint
+}
+
 export async function cancelarMiSuscripcion(): Promise<void> {
   await apiClient.patch('/api/suscripcion/cancelar')
 }
