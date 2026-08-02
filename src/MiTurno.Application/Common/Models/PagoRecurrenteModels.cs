@@ -11,7 +11,8 @@ public record CrearPreapprovalRequest(
     Periodicidad Periodicidad,
     string PayerEmail,
     string BackUrl,
-    string NotificationUrl);
+    string NotificationUrl,
+    DateTime FechaInicio);
 
 public record PreapprovalCreadoResult(string PreapprovalId, string InitPoint);
 

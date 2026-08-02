@@ -42,6 +42,7 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
             {
                 frequency,
                 frequency_type = frequencyType,
+                start_date = request.FechaInicio.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                 transaction_amount = request.Monto,
                 currency_id = "ARS"
             }

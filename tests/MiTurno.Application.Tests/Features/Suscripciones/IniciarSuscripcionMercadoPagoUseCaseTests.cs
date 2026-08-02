@@ -56,7 +56,10 @@ public class IniciarSuscripcionMercadoPagoUseCaseTests
                 r!.AccessToken == "PLATAFORMA-TOKEN" &&
                 r.PayerEmail == "negocio@test.com" &&
                 r.Monto == 5000m &&
-                r.BackUrl == "https://panel.miturno.test/panel/suscripcion?mp=vuelta"),
+                r.BackUrl == "https://panel.miturno.test/panel/suscripcion?mp=vuelta" &&
+                // No debe cobrar de inmediato: el primer cargo tiene que salir recién cuando termine
+                // el período vigente (acá, el vencimiento de la prueba gratis), no el día que se autoriza.
+                r.FechaInicio == suscripcion.FechaProximoVencimiento),
             Arg.Any<CancellationToken>());
     }
 

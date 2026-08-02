@@ -67,6 +67,12 @@ public class IniciarSuscripcionMercadoPagoUseCase
         var notificationUrl = $"{webhookBaseUrl}/api/public/suscripciones/{suscripcion.Id}/webhook/recurrente";
         var backUrl = $"{_frontendConfiguracion.BaseUrl}/panel/suscripcion?mp=vuelta";
 
+        // El primer cobro no debe salir el día que se autoriza la Preapproval: si ya hay un período
+        // vigente (de prueba, o pago pero con el cobro automático apagado), Mercado Pago no debe
+        // cobrar hasta que ese período termine. Sólo si ya venció se cobra de inmediato.
+        var ahora = DateTime.UtcNow;
+        var fechaInicio = suscripcion.FechaProximoVencimiento > ahora ? suscripcion.FechaProximoVencimiento : ahora;
+
         var preapprovalResult = await _pagoRecurrenteGateway.CrearPreapprovalAsync(
             new CrearPreapprovalRequest(
                 _plataformaPagoConfiguracion.AccessToken,
@@ -76,7 +82,8 @@ public class IniciarSuscripcionMercadoPagoUseCase
                 suscripcion.Plan.Periodicidad,
                 negocio.Email,
                 backUrl,
-                notificationUrl),
+                notificationUrl,
+                fechaInicio),
             cancellationToken);
 
         if (preapprovalResult.IsFailure)
