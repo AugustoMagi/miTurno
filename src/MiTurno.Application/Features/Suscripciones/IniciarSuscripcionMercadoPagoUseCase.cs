@@ -60,9 +60,22 @@ public class IniciarSuscripcionMercadoPagoUseCase
             // de bloquear para siempre, reconsultamos y si ya está muerto lo soltamos y seguimos.
             var estadoResult = await _pagoRecurrenteGateway.ObtenerPreapprovalAsync(
                 _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
+            var yaCanceladaEnMercadoPago = estadoResult.IsSuccess && estadoResult.Value.Status == "cancelled";
 
-            if (!estadoResult.IsSuccess || estadoResult.Value.Status != "cancelled")
-                return Result.Failure<IniciarSuscripcionMercadoPagoResponse>("Ya tenés el cobro automático de Mercado Pago activado.");
+            if (!yaCanceladaEnMercadoPago)
+            {
+                // Sin cobrarInmediato esto es "activar/reanudar el cobro de siempre" — si ya hay una
+                // Preapproval viva no hay nada más que hacer, así que se bloquea en vez de duplicarla.
+                // Con cobrarInmediato (viene de un cambio de plan) la vieja quedó a otro precio: se
+                // cancela para autorizar una nueva a este plan, en vez de dejarla huérfana pagando de más.
+                if (!cobrarInmediato)
+                    return Result.Failure<IniciarSuscripcionMercadoPagoResponse>("Ya tenés el cobro automático de Mercado Pago activado.");
+
+                var cancelacionResult = await _pagoRecurrenteGateway.CancelarPreapprovalAsync(
+                    _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
+                if (cancelacionResult.IsFailure)
+                    return Result.Failure<IniciarSuscripcionMercadoPagoResponse>(cancelacionResult.Error!);
+            }
 
             suscripcion.QuitarPreapproval();
         }

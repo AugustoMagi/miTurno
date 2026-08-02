@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import {
   cambiarPlanMiSuscripcion,
@@ -10,6 +9,7 @@ import {
   reanudarCobroAutomatico,
 } from '../../api/miSuscripcion'
 import { listarPlanesPublicos } from '../../api/planesPublicos'
+import { listarRecursos } from '../../api/recursos'
 import { extractError } from '../../api/client'
 import { Periodicidad } from '../../types/plan'
 import { EstadoSuscripcion } from '../../types/suscripcionAdmin'
@@ -20,6 +20,17 @@ import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
 import { CheckIcon, XIcon } from '../../components/icons'
+
+// Se guarda antes de cada redirect a Mercado Pago y se chequea al volver — no importa cómo: que MP
+// redirija de nuevo a nuestra back_url, que el negocio apriete "atrás" en el navegador (incluso si el
+// browser restaura la página desde bfcache sin recargarla), o que cierre y reabra la pestaña. El
+// query param ?mp=vuelta que usábamos antes sólo cubría el primer caso.
+const MP_CHECKOUT_PENDIENTE_KEY = 'miturno_mp_checkout_pendiente'
+
+function irAMercadoPago(initPoint: string) {
+  sessionStorage.setItem(MP_CHECKOUT_PENDIENTE_KEY, '1')
+  window.location.href = initPoint
+}
 
 const ESTADO_LABEL: Record<EstadoSuscripcion, string> = {
   [EstadoSuscripcion.EnPrueba]: 'En prueba',
@@ -120,33 +131,22 @@ function TextoCobroAutomatico({
 
 function PlanCard({
   plan,
-  esElActual,
-  cobroAutomaticoActivo,
-  cobroAutomaticoPausado,
+  recursosActivos,
   procesando,
+  textoBoton,
   onSeleccionar,
 }: {
   plan: PlanPublico
-  esElActual: boolean
-  cobroAutomaticoActivo: boolean
-  cobroAutomaticoPausado: boolean
+  recursosActivos: number
   procesando: boolean
+  textoBoton: string
   onSeleccionar: () => void
 }) {
+  const excedeLimite = recursosActivos > plan.limiteRecursos
+
   return (
-    <div
-      className={`flex h-full flex-col gap-3 rounded-xl border bg-white p-6 shadow-soft transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-lg ${
-        esElActual ? 'border-accent-300 ring-1 ring-accent-100' : 'border-slate-200'
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <h3 className="font-semibold text-slate-900">{plan.nombre}</h3>
-        {esElActual && (
-          <span className="rounded-full bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700">
-            Tu plan actual
-          </span>
-        )}
-      </div>
+    <div className="flex h-full flex-col gap-3 rounded-xl border border-slate-200 bg-white p-6 shadow-soft transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-lg">
+      <h3 className="font-semibold text-slate-900">{plan.nombre}</h3>
       <p className="text-slate-900">
         <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-heading)' }}>
           ${plan.precio.toLocaleString('es-AR')}
@@ -158,16 +158,15 @@ function PlanCard({
         <li>{plan.limiteReservasPorMes} reservas por mes</li>
       </ul>
 
-      {esElActual && cobroAutomaticoActivo ? (
-        <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
-          <CheckIcon className="h-4 w-4" />
-          Cobro automático activo
+      {excedeLimite ? (
+        <p className="text-sm text-red-600">
+          Tenés {recursosActivos} cancha{recursosActivos === 1 ? '' : 's'} activa
+          {recursosActivos === 1 ? '' : 's'} y este plan permite hasta {plan.limiteRecursos}. Desactivá
+          canchas antes de cambiar.
         </p>
-      ) : esElActual && cobroAutomaticoPausado ? (
-        <p className="text-sm text-slate-500">Cobro automático pausado — reactivalo arriba.</p>
       ) : (
         <Button loading={procesando} onClick={onSeleccionar} className="mt-auto">
-          {esElActual ? 'Suscribirme con Mercado Pago' : 'Cambiar a este plan'}
+          {textoBoton}
         </Button>
       )}
     </div>
@@ -175,11 +174,10 @@ function PlanCard({
 }
 
 export function MiSuscripcionPage() {
-  const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
-
   const [suscripcion, setSuscripcion] = useState<MiSuscripcion | null | undefined>(undefined)
   const [planes, setPlanes] = useState<PlanPublico[]>([])
+  const [recursosActivos, setRecursosActivos] = useState(0)
+  const [mostrandoCambioPlan, setMostrandoCambioPlan] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resultadoMercadoPago, setResultadoMercadoPago] = useState<
     'pendiente' | 'confirmado' | 'no-detectado' | null
@@ -208,26 +206,32 @@ export function MiSuscripcionPage() {
     listarPlanesPublicos()
       .then(setPlanes)
       .catch(() => {})
+    listarRecursos()
+      .then((recursos) => setRecursosActivos(recursos.filter((r) => r.activo).length))
+      .catch(() => {})
   }
 
   useEffect(cargar, [])
 
-  // Mercado Pago vuelve acá tanto si el negocio autorizó el cobro recurrente como si cerró el
-  // checkout sin completarlo — no hay forma de distinguir eso por la URL de vuelta, así que hay que
-  // sondear el estado real para saber cuál de las dos pasó.
+  // Sondea si el pago con Mercado Pago se confirmó o no. Se dispara al volver de un redirect a MP
+  // (ver irAMercadoPago): CobroAutomaticoActivo prendiéndose es la única señal confiable de que el
+  // pago se efectuó — si se agotan los intentos sin que eso pase, lo más probable es que el negocio
+  // haya cerrado/vuelto atrás del checkout sin llegar a autorizar nada (Mercado Pago deja la
+  // Preapproval en "pending" para siempre en ese caso, así que seguir esperando no cambiaría nada).
   useEffect(() => {
-    if (searchParams.get('mp') === 'vuelta') {
-      setResultadoMercadoPago('pendiente')
-      navigate('/panel/suscripcion', { replace: true })
+    function chequearVueltaDeMercadoPago() {
+      if (sessionStorage.getItem(MP_CHECKOUT_PENDIENTE_KEY) === '1') {
+        setResultadoMercadoPago('pendiente')
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    chequearVueltaDeMercadoPago()
+    // 'pageshow' cubre volver con el botón atrás del navegador: el browser puede restaurar la página
+    // desde bfcache sin volver a montar el componente, así que el chequeo de arriba solo no alcanza.
+    window.addEventListener('pageshow', chequearVueltaDeMercadoPago)
+    return () => window.removeEventListener('pageshow', chequearVueltaDeMercadoPago)
   }, [])
 
-  // Mientras esperamos que el webhook (o la reconciliación en vivo de ObtenerMiSuscripcion) confirme
-  // el cobro, sondeamos unas cuantas veces. Si CobroAutomaticoActivo se prende, el pago se confirmó;
-  // si se agotan los intentos sin que eso pase, lo más probable es que el negocio haya cerrado el
-  // checkout sin llegar a autorizar nada (Mercado Pago deja la Preapproval en "pending" para siempre
-  // en ese caso, así que seguir esperando no cambiaría nada).
   useEffect(() => {
     if (resultadoMercadoPago !== 'pendiente') return
 
@@ -241,6 +245,7 @@ export function MiSuscripcionPage() {
         if (cancelado) return
         setSuscripcion(actual)
         if (actual.cobroAutomaticoActivo) {
+          sessionStorage.removeItem(MP_CHECKOUT_PENDIENTE_KEY)
           setResultadoMercadoPago('confirmado')
           return
         }
@@ -251,6 +256,7 @@ export function MiSuscripcionPage() {
       if (intentos < 15) {
         setTimeout(sondear, 4000)
       } else {
+        sessionStorage.removeItem(MP_CHECKOUT_PENDIENTE_KEY)
         setResultadoMercadoPago('no-detectado')
       }
     }
@@ -262,29 +268,45 @@ export function MiSuscripcionPage() {
     }
   }, [resultadoMercadoPago])
 
-  // Elige/cambia el plan (según si ya había una suscripción asignada) y, si el plan tiene costo y
-  // todavía no hay cobro automático activo para él, manda directo a pagarlo con Mercado Pago: un
-  // solo click cubre "elegir/cambiar" y "pagar", en vez de dos pasos separados. Si es un cambio de
-  // plan (no el mismo de siempre), se cobra ya mismo en vez de esperar al vencimiento del período
-  // viejo: el negocio decidió pagar el nuevo precio ahora.
-  async function handleSeleccionarPlan(plan: PlanPublico) {
-    const esCambioDePlan = suscripcion != null && suscripcion.planId !== plan.id
+  // Primera elección de plan (todavía sin suscripción asignada): arranca la prueba gratis de ese
+  // plan y, si tiene costo, manda a autorizar el cobro automático — pero recién cobra cuando termine
+  // la prueba (cobrarInmediato en false), no el día que se autoriza.
+  async function handleElegirPlan(plan: PlanPublico) {
     setProcesandoPlanId(plan.id)
     setError(null)
     try {
-      let actual: MiSuscripcion | null = suscripcion ?? null
-      if (actual === null) {
-        actual = await elegirPlan(plan.id)
-      } else if (esCambioDePlan) {
-        actual = await cambiarPlanMiSuscripcion(plan.id)
-      }
+      const actual = await elegirPlan(plan.id)
       setSuscripcion(actual)
 
       if (plan.precio > 0 && !actual.cobroAutomaticoActivo) {
-        const initPoint = await iniciarSuscripcionMercadoPago(esCambioDePlan)
-        window.location.href = initPoint
+        const initPoint = await iniciarSuscripcionMercadoPago()
+        irAMercadoPago(initPoint)
         return
       }
+    } catch (err) {
+      setError(extractError(err))
+    } finally {
+      setProcesandoPlanId(null)
+    }
+  }
+
+  // Cambio a un plan distinto del que ya tenía asignado: siempre manda a pagar a Mercado Pago (si el
+  // plan tiene costo), sin importar si el cobro automático del plan viejo ya estaba activo — es un
+  // compromiso nuevo, a un precio nuevo, así que se re-autoriza de cero en vez de dejarlo cobrando en
+  // silencio el monto viejo hasta la próxima renovación.
+  async function handleCambiarAPlan(plan: PlanPublico) {
+    setProcesandoPlanId(plan.id)
+    setError(null)
+    try {
+      await cambiarPlanMiSuscripcion(plan.id)
+
+      if (plan.precio > 0) {
+        const initPoint = await iniciarSuscripcionMercadoPago(true)
+        irAMercadoPago(initPoint)
+        return
+      }
+      cargar()
+      setMostrandoCambioPlan(false)
     } catch (err) {
       setError(extractError(err))
     } finally {
@@ -314,7 +336,7 @@ export function MiSuscripcionPage() {
     setError(null)
     try {
       const initPoint = await iniciarSuscripcionMercadoPago()
-      window.location.href = initPoint
+      irAMercadoPago(initPoint)
     } catch (err) {
       setError(extractError(err))
       setReactivando(false)
@@ -397,9 +419,10 @@ export function MiSuscripcionPage() {
         </Card>
       )}
 
-      {planes.length > 0 && (
+      {/* Onboarding: todavía sin suscripción asignada, se elige el primer plan. */}
+      {suscripcion === null && planes.length > 0 && (
         <div className="flex flex-col gap-3">
-          {suscripcion === null && <p className="text-slate-500">Todavía no tenés una suscripción asignada — elegí un plan.</p>}
+          <p className="text-slate-500">Todavía no tenés una suscripción asignada — elegí un plan.</p>
           <p className="text-xs text-slate-400">
             Los pagos con Mercado Pago pueden tardar unos minutos en reflejarse acá — no hace falta
             que vuelvas a pagar si ya lo hiciste.
@@ -409,18 +432,50 @@ export function MiSuscripcionPage() {
               <PlanCard
                 key={plan.id}
                 plan={plan}
-                esElActual={suscripcion !== null && suscripcion.planId === plan.id}
-                cobroAutomaticoActivo={
-                  suscripcion !== null && suscripcion.planId === plan.id && suscripcion.cobroAutomaticoActivo
-                }
-                cobroAutomaticoPausado={
-                  suscripcion !== null && suscripcion.planId === plan.id && suscripcion.cobroAutomaticoPausado
-                }
+                recursosActivos={recursosActivos}
                 procesando={procesandoPlanId === plan.id}
-                onSeleccionar={() => handleSeleccionarPlan(plan)}
+                textoBoton="Elegir este plan"
+                onSeleccionar={() => handleElegirPlan(plan)}
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Ya con suscripción asignada: cambiar de plan es una acción aparte, detrás de un botón —
+          el plan actual no aparece en la lista (no tiene sentido "cambiar" al mismo de siempre; para
+          eso está la sección de cobro automático de arriba). */}
+      {suscripcion !== null && planes.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="secondary"
+            className="self-start"
+            onClick={() => setMostrandoCambioPlan((v) => !v)}
+          >
+            {mostrandoCambioPlan ? 'Ocultar planes' : 'Cambiar plan'}
+          </Button>
+
+          {mostrandoCambioPlan && (
+            <>
+              <p className="text-xs text-slate-400">
+                Cambiar de plan te manda a pagar con Mercado Pago ya mismo, al precio del plan nuevo.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {planes
+                  .filter((plan) => plan.id !== suscripcion.planId)
+                  .map((plan) => (
+                    <PlanCard
+                      key={plan.id}
+                      plan={plan}
+                      recursosActivos={recursosActivos}
+                      procesando={procesandoPlanId === plan.id}
+                      textoBoton="Cambiar a este plan"
+                      onSeleccionar={() => handleCambiarAPlan(plan)}
+                    />
+                  ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
