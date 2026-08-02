@@ -89,12 +89,14 @@ public class IniciarSuscripcionMercadoPagoUseCase
 
         // El primer cobro no debe salir el día que se autoriza la Preapproval si se está retomando el
         // mismo plan de siempre (de prueba, o pago pero con el cobro automático apagado): ahí se
-        // respeta el período ya vigente. Si en cambio se acaba de cambiar de plan, el negocio decidió
-        // pagar el nuevo precio ya mismo, así que se cobra de entrada (cobrarInmediato).
-        var ahora = DateTime.UtcNow;
-        var fechaInicio = !cobrarInmediato && suscripcion.FechaProximoVencimiento > ahora
+        // respeta el período ya vigente (start_date = esa fecha futura). Si en cambio se acaba de
+        // cambiar de plan (cobrarInmediato) o ya no queda período que honrar, no se manda start_date
+        // en absoluto — dejar que Mercado Pago cobre "ahora" por su cuenta, en vez de calcular un
+        // "ahora" acá y mandarlo (la latencia de red puede hacer que ya esté en el pasado para cuando
+        // MP lo valida, y lo rechace con "cannot be a past date").
+        DateTime? fechaInicio = !cobrarInmediato && suscripcion.FechaProximoVencimiento > DateTime.UtcNow
             ? suscripcion.FechaProximoVencimiento
-            : ahora;
+            : null;
 
         var preapprovalResult = await _pagoRecurrenteGateway.CrearPreapprovalAsync(
             new CrearPreapprovalRequest(

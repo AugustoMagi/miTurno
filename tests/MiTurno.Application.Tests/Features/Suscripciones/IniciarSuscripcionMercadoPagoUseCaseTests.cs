@@ -64,24 +64,24 @@ public class IniciarSuscripcionMercadoPagoUseCaseTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConCobrarInmediato_IgnoraElVencimientoVigenteYCobraYa()
+    public async Task ExecuteAsync_ConCobrarInmediato_NoMandaFechaInicioParaQueMercadoPagoCobreYa()
     {
         // Cuando se acaba de cambiar de plan, el negocio decidió pagar el nuevo precio ya mismo, no
-        // esperar a que termine el período del plan viejo.
-        var (negocio, suscripcion) = EscenarioValido();
+        // esperar a que termine el período del plan viejo. No se manda ninguna fecha calculada acá
+        // como "ahora": eso corre el riesgo de llegar ya vencida por la latencia de red y que Mercado
+        // Pago la rechace con "cannot be a past date" — se deja el campo vacío para que cobre ya.
+        var (negocio, _) = EscenarioValido();
         _pagoRecurrenteGateway.CrearPreapprovalAsync(Arg.Any<CrearPreapprovalRequest>(), Arg.Any<CancellationToken>())
             .Returns(Result.Success(new PreapprovalCreadoResult("preapproval-1", "https://mp.test/suscribirme/preapproval-1")));
 
-        var antesDeEjecutar = DateTime.UtcNow;
         var result = await _useCase.ExecuteAsync(negocio.Id, WebhookBaseUrl, cobrarInmediato: true);
 
         result.IsSuccess.Should().BeTrue();
         await _pagoRecurrenteGateway.Received(1).CrearPreapprovalAsync(
-            Arg.Is<CrearPreapprovalRequest>(r =>
-                r!.FechaInicio != suscripcion.FechaProximoVencimiento &&
-                r.FechaInicio >= antesDeEjecutar),
+            Arg.Is<CrearPreapprovalRequest>(r => r!.FechaInicio == null),
             Arg.Any<CancellationToken>());
     }
+
 
     [Fact]
     public async Task ExecuteAsync_SinSuscripcionAsignada_DevuelveFailure()

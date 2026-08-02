@@ -29,6 +29,22 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
     {
         var (frequency, frequencyType) = MapearPeriodicidad(request.Periodicidad);
 
+        // Sin FechaInicio, no se manda start_date en absoluto: dejar que Mercado Pago cobre "ahora"
+        // por su cuenta es más seguro que calcular un "ahora" acá y mandarlo, porque la latencia de
+        // red puede hacer que ya esté en el pasado cuando MP lo valida (rechaza con "cannot be a past
+        // date"). Sólo se manda cuando hay una fecha futura real a la que diferir el primer cobro.
+        var autoRecurring = new Dictionary<string, object>
+        {
+            ["frequency"] = frequency,
+            ["frequency_type"] = frequencyType,
+            ["transaction_amount"] = request.Monto,
+            ["currency_id"] = "ARS"
+        };
+        if (request.FechaInicio is { } fechaInicio)
+            // Offset explícito (+00:00) en vez de "Z": es el formato que usan los ejemplos de la
+            // documentación de Mercado Pago para start_date/end_date.
+            autoRecurring["start_date"] = new DateTimeOffset(fechaInicio, TimeSpan.Zero).ToString("yyyy-MM-ddTHH:mm:ss.fffzzz");
+
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/preapproval");
         httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", request.AccessToken);
         httpRequest.Content = JsonContent.Create(new
@@ -39,16 +55,7 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
             back_url = request.BackUrl,
             notification_url = request.NotificationUrl,
             status = "pending",
-            auto_recurring = new
-            {
-                frequency,
-                frequency_type = frequencyType,
-                // Con offset explícito (+00:00) en vez de "Z": es el formato que usan los ejemplos de
-                // la documentación de Mercado Pago para start_date/end_date.
-                start_date = new DateTimeOffset(request.FechaInicio, TimeSpan.Zero).ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"),
-                transaction_amount = request.Monto,
-                currency_id = "ARS"
-            }
+            auto_recurring = autoRecurring
         });
 
         try
