@@ -247,6 +247,9 @@ export function MiSuscripcionPage() {
         if (actual.cobroAutomaticoActivo) {
           sessionStorage.removeItem(MP_CHECKOUT_PENDIENTE_KEY)
           setResultadoMercadoPago('confirmado')
+          // Refresca también los planes y las canchas activas, no sólo la suscripción: confirmado el
+          // pago puede cambiar qué opciones de "Cambiar plan" corresponden mostrar.
+          cargar()
           return
         }
       } catch {

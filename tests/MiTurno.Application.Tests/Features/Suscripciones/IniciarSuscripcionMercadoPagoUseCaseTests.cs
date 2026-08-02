@@ -164,6 +164,29 @@ public class IniciarSuscripcionMercadoPagoUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ConPreapprovalPrevioPendienteEnMercadoPago_LoSueltaYCreaUnoNuevoSinBloquear()
+    {
+        // "pending" es una Preapproval que el negocio nunca llegó a autorizar (cerró el checkout sin
+        // completarlo): no hay nada activo que proteger, así que no debe bloquear "activar cobro
+        // automático" con "ya tenés el cobro activado" — eso dejaría al negocio sin poder activarlo
+        // nunca más por una Preapproval vieja que quedó a mitad de camino. Tampoco hace falta llamar a
+        // CancelarPreapprovalAsync: MP rechaza cancelar algo que nunca se autorizó.
+        var (negocio, suscripcion) = EscenarioValido();
+        suscripcion.AsignarPreapproval("preapproval-viejo");
+        _pagoRecurrenteGateway.ObtenerPreapprovalAsync(Arg.Any<string>(), "preapproval-viejo")
+            .Returns(Result.Success(new PreapprovalEstadoResult("preapproval-viejo", "pending", null)));
+        _pagoRecurrenteGateway.CrearPreapprovalAsync(Arg.Any<CrearPreapprovalRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new PreapprovalCreadoResult("preapproval-nuevo", "https://mp.test/suscribirme/preapproval-nuevo")));
+
+        var result = await _useCase.ExecuteAsync(negocio.Id, WebhookBaseUrl);
+
+        result.IsSuccess.Should().BeTrue();
+        suscripcion.MercadoPagoPreapprovalId.Should().Be("preapproval-nuevo");
+        await _pagoRecurrenteGateway.DidNotReceive().CancelarPreapprovalAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ConPreapprovalPrevioYaCanceladoEnMercadoPago_LoSueltaYCreaUnoNuevo()
     {
         var (negocio, suscripcion) = EscenarioValido();

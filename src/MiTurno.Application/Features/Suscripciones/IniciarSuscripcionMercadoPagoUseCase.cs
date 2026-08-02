@@ -55,19 +55,24 @@ public class IniciarSuscripcionMercadoPagoUseCase
 
         if (suscripcion.MercadoPagoPreapprovalId is not null)
         {
-            // Un Preapproval que el negocio nunca autorizó (o canceló desde su propia cuenta de MP)
-            // puede quedar cancelado del lado de Mercado Pago sin que el webhook nos avise: en vez
-            // de bloquear para siempre, reconsultamos y si ya está muerto lo soltamos y seguimos.
             var estadoResult = await _pagoRecurrenteGateway.ObtenerPreapprovalAsync(
                 _plataformaPagoConfiguracion.AccessToken, suscripcion.MercadoPagoPreapprovalId, cancellationToken);
-            var yaCanceladaEnMercadoPago = estadoResult.IsSuccess && estadoResult.Value.Status == "cancelled";
 
-            if (!yaCanceladaEnMercadoPago)
+            // "cancelled": el negocio la canceló desde su propia cuenta de MP sin que el webhook nos
+            // avise. "pending": nunca se llegó a autorizar (cerró el checkout sin completarlo) — no
+            // hay nada activo ahí que proteger, y encima MP rechaza cancelar algo que nunca se
+            // autorizó. En ninguno de los dos casos hay que bloquear ni intentar cancelarla: se suelta
+            // directo y se sigue, en vez de dejar al negocio sin poder activar nunca más el cobro
+            // automático por una Preapproval vieja que quedó a mitad de camino.
+            var noHayNadaQueProteger = estadoResult.IsSuccess &&
+                (estadoResult.Value.Status == "cancelled" || estadoResult.Value.Status == "pending");
+
+            if (!noHayNadaQueProteger)
             {
                 // Sin cobrarInmediato esto es "activar/reanudar el cobro de siempre" — si ya hay una
-                // Preapproval viva no hay nada más que hacer, así que se bloquea en vez de duplicarla.
-                // Con cobrarInmediato (viene de un cambio de plan) la vieja quedó a otro precio: se
-                // cancela para autorizar una nueva a este plan, en vez de dejarla huérfana pagando de más.
+                // Preapproval viva (autorizada o pausada) no hay nada más que hacer, así que se bloquea
+                // en vez de duplicarla. Con cobrarInmediato (viene de un cambio de plan) la vieja quedó
+                // a otro precio: se cancela para autorizar una nueva a este plan.
                 if (!cobrarInmediato)
                     return Result.Failure<IniciarSuscripcionMercadoPagoResponse>("Ya tenés el cobro automático de Mercado Pago activado.");
 
