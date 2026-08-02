@@ -19,7 +19,7 @@ import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Spinner } from '../../components/Spinner'
 import { ErrorBanner } from '../../components/ErrorBanner'
-import { CheckIcon, XIcon } from '../../components/icons'
+import { CheckIcon, LayersIcon, XIcon } from '../../components/icons'
 
 // Se guarda antes de cada redirect a Mercado Pago y se chequea al volver — no importa cómo: que MP
 // redirija de nuevo a nuestra back_url, que el negocio apriete "atrás" en el navegador (incluso si el
@@ -446,37 +446,38 @@ export function MiSuscripcionPage() {
           el plan actual no aparece en la lista (no tiene sentido "cambiar" al mismo de siempre; para
           eso está la sección de cobro automático de arriba). */}
       {suscripcion !== null && planes.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <Card className="flex flex-col gap-3">
+          <h2 className="font-semibold text-slate-900">Cambiar de plan</h2>
+          <p className="text-sm text-slate-500">
+            ¿Necesitás más (o menos) canchas o reservas por mes? Elegí otro plan — te vamos a llevar a
+            Mercado Pago para confirmar el pago al precio nuevo.
+          </p>
           <Button
             variant="secondary"
+            icon={<LayersIcon />}
             className="self-start"
             onClick={() => setMostrandoCambioPlan((v) => !v)}
           >
-            {mostrandoCambioPlan ? 'Ocultar planes' : 'Cambiar plan'}
+            {mostrandoCambioPlan ? 'Ocultar planes' : 'Ver planes disponibles'}
           </Button>
 
           {mostrandoCambioPlan && (
-            <>
-              <p className="text-xs text-slate-400">
-                Cambiar de plan te manda a pagar con Mercado Pago ya mismo, al precio del plan nuevo.
-              </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {planes
-                  .filter((plan) => plan.id !== suscripcion.planId)
-                  .map((plan) => (
-                    <PlanCard
-                      key={plan.id}
-                      plan={plan}
-                      recursosActivos={recursosActivos}
-                      procesando={procesandoPlanId === plan.id}
-                      textoBoton="Cambiar a este plan"
-                      onSeleccionar={() => handleCambiarAPlan(plan)}
-                    />
-                  ))}
-              </div>
-            </>
+            <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-3">
+              {planes
+                .filter((plan) => plan.id !== suscripcion.planId)
+                .map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    recursosActivos={recursosActivos}
+                    procesando={procesandoPlanId === plan.id}
+                    textoBoton="Cambiar a este plan"
+                    onSeleccionar={() => handleCambiarAPlan(plan)}
+                  />
+                ))}
+            </div>
           )}
-        </div>
+        </Card>
       )}
 
       {suscripcion !== null && (suscripcion.estado !== EstadoSuscripcion.Cancelada || suscripcion.cobroAutomaticoActivo) && (

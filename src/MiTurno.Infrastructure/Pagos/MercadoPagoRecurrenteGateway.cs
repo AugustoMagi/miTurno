@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using MiTurno.Application.Common.Interfaces;
 using MiTurno.Application.Common.Models;
@@ -42,7 +43,9 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
             {
                 frequency,
                 frequency_type = frequencyType,
-                start_date = request.FechaInicio.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                // Con offset explícito (+00:00) en vez de "Z": es el formato que usan los ejemplos de
+                // la documentación de Mercado Pago para start_date/end_date.
+                start_date = new DateTimeOffset(request.FechaInicio, TimeSpan.Zero).ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"),
                 transaction_amount = request.Monto,
                 currency_id = "ARS"
             }
@@ -52,8 +55,11 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         {
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
+            {
+                var detalle = await LeerMensajeDeErrorAsync(response, cancellationToken);
                 return Result.Failure<PreapprovalCreadoResult>(
-                    $"Mercado Pago rechazó la creación de la suscripción ({(int)response.StatusCode}).");
+                    $"Mercado Pago rechazó la creación de la suscripción ({(int)response.StatusCode}){detalle}.");
+            }
 
             var body = await response.Content.ReadFromJsonAsync<PreapprovalResponse>(cancellationToken);
             var initPoint = body?.InitPoint ?? body?.SandboxInitPoint;
@@ -116,7 +122,10 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         {
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return Result.Failure($"Mercado Pago no pudo {accion} la suscripción ({(int)response.StatusCode}).");
+            {
+                var detalle = await LeerMensajeDeErrorAsync(response, cancellationToken);
+                return Result.Failure($"Mercado Pago no pudo {accion} la suscripción ({(int)response.StatusCode}){detalle}.");
+            }
 
             return Result.Success();
         }
@@ -137,7 +146,10 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
         {
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return Result.Failure($"Mercado Pago no pudo actualizar el monto de la suscripción ({(int)response.StatusCode}).");
+            {
+                var detalle = await LeerMensajeDeErrorAsync(response, cancellationToken);
+                return Result.Failure($"Mercado Pago no pudo actualizar el monto de la suscripción ({(int)response.StatusCode}){detalle}.");
+            }
 
             return Result.Success();
         }
@@ -211,6 +223,41 @@ public class MercadoPagoRecurrenteGateway : IPagoRecurrenteGateway
     // 12 meses porque no existe un frequency_type de años.
     private static (int Frequency, string FrequencyType) MapearPeriodicidad(Periodicidad periodicidad) =>
         periodicidad == Periodicidad.Mensual ? (1, "months") : (12, "months");
+
+    // Sin esto, un rechazo de Mercado Pago sólo mostraba el código HTTP (ej. "(400)"), sin decir qué
+    // campo estaba mal — imposible de diagnosticar a distancia. El body de error de MP normalmente
+    // trae un campo "message" con el motivo puntual; si no se puede parsear, se manda el body crudo
+    // (acotado) en vez de nada.
+    private static async Task<string> LeerMensajeDeErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        string body;
+        try
+        {
+            body = await response.Content.ReadAsStringAsync(cancellationToken);
+        }
+        catch
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(body))
+            return string.Empty;
+
+        try
+        {
+            var error = JsonSerializer.Deserialize<MercadoPagoErrorResponse>(body);
+            if (!string.IsNullOrWhiteSpace(error?.Message))
+                return $": {error.Message}";
+        }
+        catch (JsonException)
+        {
+            // el body no era el JSON de error esperado, se cae al texto crudo de abajo
+        }
+
+        return $": {(body.Length > 300 ? body[..300] : body)}";
+    }
+
+    private record MercadoPagoErrorResponse(string? Message);
 
     private record PreapprovalResponse(
         string? Id,
