@@ -309,7 +309,7 @@ export function LandingPage() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
-              className="shrink-0 text-slate-500 transition-colors duration-200 hover:text-link-600 sm:ml-2 sm:border-l sm:border-slate-200 sm:pl-4"
+              className="hidden shrink-0 text-slate-500 transition-colors duration-200 hover:text-link-600 sm:ml-2 sm:inline-flex sm:border-l sm:border-slate-200 sm:pl-4"
             >
               <IconInstagram />
             </a>
