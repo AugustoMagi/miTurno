@@ -275,26 +275,29 @@ export function LandingPage() {
     <div className="bg-dotted flex min-h-svh flex-col">
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
-          <Link to="/" className="group flex items-center gap-2">
+          <Link to="/" className="group flex shrink-0 items-center gap-2">
             <img
               src="/logo.png"
               alt="MiTurno"
               className="h-9 w-9 rounded-xl object-cover shadow-soft transition-transform duration-200 group-hover:scale-105"
             />
-            <span className="text-lg font-bold tracking-tight text-slate-900" style={{ fontFamily: 'var(--font-heading)' }}>
+            <span
+              className="text-lg font-bold tracking-tight whitespace-nowrap text-slate-900"
+              style={{ fontFamily: 'var(--font-heading)' }}
+            >
               Mi<span className="text-accent-500">Turno</span>
             </span>
           </Link>
-          <nav className="flex items-center gap-2 sm:gap-6">
+          <nav className="flex shrink-0 items-center gap-2 sm:gap-6">
             <a
               href="#planes"
-              className="hidden text-sm font-medium text-slate-600 transition-colors duration-200 hover:text-link-600 sm:inline"
+              className="hidden text-sm font-medium whitespace-nowrap text-slate-600 transition-colors duration-200 hover:text-link-600 sm:inline"
             >
               Planes
             </a>
             <Link
               to="/panel/login"
-              className="text-sm font-medium text-slate-600 transition-colors duration-200 hover:text-link-600"
+              className="text-sm font-medium whitespace-nowrap text-slate-600 transition-colors duration-200 hover:text-link-600"
             >
               Ingresar
             </Link>
@@ -306,7 +309,7 @@ export function LandingPage() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
-              className="ml-1 border-l border-slate-200 pl-3 text-slate-500 transition-colors duration-200 hover:text-link-600 sm:ml-2 sm:pl-4"
+              className="shrink-0 text-slate-500 transition-colors duration-200 hover:text-link-600 sm:ml-2 sm:border-l sm:border-slate-200 sm:pl-4"
             >
               <IconInstagram />
             </a>
