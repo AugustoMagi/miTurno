@@ -130,11 +130,11 @@ h4 {
     transform: scale(1) rotate(0deg);
   }
   6% {
-    opacity: 0.18;
+    opacity: 0.3;
     transform: scale(1.03) rotate(1deg);
   }
   26% {
-    opacity: 0.18;
+    opacity: 0.3;
     transform: scale(1.03) rotate(1deg);
   }
   32% {

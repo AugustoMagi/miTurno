@@ -1,7 +1,7 @@
 // Fotos reales de distintas canchas, de fondo en el hero: muy transparentes, se van cruzando con
 // un fade lento y continuo (puro CSS, ver .animate-cancha-fade en index.css) — ningún deporte
-// "gana" sobre otro, es la misma idea de "sirve para cualquier tipo de cancha". En escala de
-// grises para que no compitan en color con la marca, siendo sólo una textura de fondo.
+// "gana" sobre otro, es la misma idea de "sirve para cualquier tipo de cancha". Semi-desaturadas
+// (no 100% grises) para que se note un poco de color sin competir con la marca.
 const DURACION_S = 30
 const CANTIDAD = 5
 
@@ -24,7 +24,7 @@ export function HeroCanchasFondo() {
           key={foto.src}
           src={foto.src}
           alt={foto.alt}
-          className="animate-cancha-fade col-start-1 row-start-1 h-full w-full object-cover opacity-0 grayscale"
+          className="animate-cancha-fade col-start-1 row-start-1 h-full w-full object-cover opacity-0 grayscale-[30%] saturate-150"
           style={{ animationDelay: `${-(i * (DURACION_S / CANTIDAD))}s` }}
         />
       ))}

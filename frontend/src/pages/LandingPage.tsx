@@ -33,6 +33,16 @@ function IconShare() {
   )
 }
 
+function IconInstagram() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" className="h-5 w-5">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17" cy="7" r="0.5" fill="currentColor" />
+    </svg>
+  )
+}
+
 function IconCalendarCheck() {
   return (
     <svg viewBox="0 0 24 24" fill="none" strokeWidth={1.8} stroke="currentColor" className="h-5 w-5">
@@ -291,6 +301,15 @@ export function LandingPage() {
             <Link to="/panel/registro" className={`${BOTON_PRIMARIO} hidden sm:inline-flex`}>
               Crear tu negocio
             </Link>
+            <a
+              href="https://www.instagram.com/miturno__/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              className="ml-1 border-l border-slate-200 pl-3 text-slate-500 transition-colors duration-200 hover:text-link-600 sm:ml-2 sm:pl-4"
+            >
+              <IconInstagram />
+            </a>
           </nav>
         </div>
       </header>
@@ -632,6 +651,15 @@ export function LandingPage() {
             <p className="font-medium text-slate-700">¿Necesitás ayuda? Escribinos</p>
             <a href="tel:+543412853608" className="text-link-600 hover:text-link-700 hover:underline">
               Tel / WhatsApp: 341 285-3608
+            </a>
+            <a
+              href="https://www.instagram.com/miturno__/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-link-600 hover:text-link-700 hover:underline"
+            >
+              <IconInstagram />
+              @miturno__
             </a>
             <Link to="/admin/login" className="text-slate-400 hover:text-slate-600">
               Acceso administrador
